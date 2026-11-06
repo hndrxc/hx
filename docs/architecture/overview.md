@@ -4,7 +4,7 @@
 
 This document defines the high-level architecture, components, trust zones, and runtime data flows for `hx`.
 
-All components and capabilities described herein are **Planned**; no production code is implemented yet. Feasibility and dependency assertions derive from throwaway build spikes executed outside the repository (`docs/spikes/2026-11-build-feasibility.md`). Each capability is mapped to its owning issue for implementation tracking.
+Runtime capabilities described here remain **Planned**. [F02 (#10)](https://github.com/hndrxc/hx/issues/10) adds the Go module, command entry points, help/version output and import-policy checks; hub, TUI, desktop and agent runtimes explicitly fail as unimplemented. See the [build guide](../build.md) for the current executable surface. Framework feasibility evidence remains the historical throwaway [F01 spike](../spikes/2026-11-build-feasibility.md); each runtime capability is mapped to its owning issue.
 
 Related design and security documents:
 - [Threat Model and Trust Boundaries](../security/threat-model.md)

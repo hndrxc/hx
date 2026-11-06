@@ -4,13 +4,14 @@ Last verified: 2026-11-06
 
 > **Policy Note**: This document serves as the single source of truth for living version numbers, dependency pins, platform support tiers, and system capability mappings. Architectural decisions and policies are recorded in [Architecture Decision Records](adr/README.md) (ADRs), while concrete dependency versions and verification dates are tracked here.
 >
-> **Status Clarification**: All production components remain **Planned**; no production application code has been committed yet. The support tiers listed below describe compiler and build feasibility demonstrated during the initial toolchain spike ([docs/spikes/2026-11-build-feasibility.md](spikes/2026-11-build-feasibility.md)) on 2026-11-06, rather than completed production deliverables. Production binaries will be built and verified in their owning follow-up issues.
-
+> **Status Clarification**: The initial Go module scaffolding and minimal binary command bootstrap is implemented in [F02 (#10)](https://github.com/hndrxc/hx/issues/10). `hx hub`, `hx tui` and bare `hx-agent`/`hx-desktop` exit 1; help/version exit 0; `hx` without arguments prints help and exits 0. The support tiers listed below describe compiler and build feasibility demonstrated during the initial toolchain spike ([docs/spikes/2026-11-build-feasibility.md](spikes/2026-11-build-feasibility.md)) and the headless CGO-free build verification in F02. Production runtime features will be built and verified in their owning follow-up issues.
 ---
 
 ## 1. Toolchain & Dependencies
 
-All dependencies adhere to the selection policy defined in [ADR-0004](adr/0004-toolchain-and-dependency-selection.md): latest stable releases only, zero pre-releases, and pinned in `go.mod` (owned by [F02 (#10)](https://github.com/hndrxc/hx/issues/10)).
+All dependencies adhere to the selection policy defined in [ADR-0004](adr/0004-toolchain-and-dependency-selection.md): latest stable releases only and zero pre-releases.
+
+In accordance with the F02 bootstrap design, direct imports and locks in `go.mod` / `go.sum` are intentionally minimal: only Go toolchain `1.27.3`, direct runtime dependency `github.com/spf13/cobra v1.10.2`, and its transitive dependencies (`github.com/spf13/pflag v1.0.9` and `github.com/inconshreveable/mousetrap v1.1.0`) are pinned and verified. Selected future dependencies (Charm v2, ConnectRPC v2, Protobuf, modernc SQLite, tsnet, Wails v3) are documented below as architectural selections to be added by their owning follow-up issues.
 
 | Component | Module / Artifact | Selected Version | Released | Go Directive | License | Primary Source | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -27,17 +28,19 @@ All dependencies adhere to the selection policy defined in [ADR-0004](adr/0004-t
 | **Embedded Database** | `modernc.org/sqlite` | v1.61.1 | 2026-10-31 | 1.26.0 | BSD-3-Clause | [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite@v1.61.1) | Pure Go (CGO-free), bundles SQLite 3.54.1; requires `modernc.org/libc` v1.79.0 in actual graph. |
 | **Tailnet Engine** | `tailscale.com` | v1.104.5 | 2026-11-02 | 1.27.3 | BSD-3-Clause | [tailscale.com/tsnet](https://pkg.go.dev/tailscale.com@v1.104.5/tsnet) | Embedded wireguard mesh (`tsnet`) for `hx hub`. Forces module go directive ≥ 1.27.3. Residual vulnerability note: Transitive module-only uncalled findings exist in dependency graph (`GO-2026-6866` / `GO-2026-6860` in `golang.org/x/net` v0.60.0; fixed in v0.62.0, and `GO-2026-5932` `x/crypto/openpgp` in `golang.org/x/crypto` v0.58.0 with fix in pre-release); neither package is imported nor called by hx. Downstream issues F02/F04 rerun scans on the actual application. |
 | **Desktop Framework** | `github.com/wailsapp/wails/v3` | v3.1.0 | 2026-11-01 | 1.26.0 | MIT | [github.com/wailsapp/wails/v3](https://pkg.go.dev/github.com/wailsapp/wails/v3@v3.1.0) | Webview bridge for `hx-desktop`. Go scan reports 0 vulnerabilities. Security note: GHSA-2p5f-2gx8-mh8m architectural advisory residual remains for same-origin child frames on Linux WebKitGTK; requires strict CSP (`frame-src 'none'`) and packaged assets. |
-| **Compression Override (transitive)** | `github.com/klauspost/compress` | v1.20.3 | 2026-10-12 | 1.25 | BSD-3-Clause | [github.com/klauspost/compress](https://pkg.go.dev/github.com/klauspost/compress@v1.20.3) | Transitive dependency via `tailscale.com` (`tsnet` -> `controlclient` -> `zstdframe`). Initial unpinned graph brought v1.20.0 vulnerable to `GO-2026-6865` (panic on two-block frames; fixed in v1.20.2). Pinning v1.20.3 in `go.mod` (owned by F02 #10) resolves reachable symbol vulnerabilities. |
+| **Compression Override (transitive)** | `github.com/klauspost/compress` | v1.20.3 | 2026-10-12 | 1.25 | BSD-3-Clause | [github.com/klauspost/compress](https://pkg.go.dev/github.com/klauspost/compress@v1.20.3) | Transitive dependency via `tailscale.com` (`tsnet` -> `controlclient` -> `zstdframe`). To avoid unused dependencies, F02 does not directly require this package; this version floor (>= v1.20.3) is required to be pinned when `tailscale.com` is first imported into `go.mod` to resolve `GO-2026-6865`. |
 
 ---
 
 ## 2. Platform Targets & Support Tiers
 
 Defined in accordance with [ADR-0005](adr/0005-supported-platforms-and-build-targets.md):
-- **Supported**: Built and execution smoke-tested on target OS/architecture with recorded evidence.
-- **Build-verified**: Successfully compiled for target `GOOS`/`GOARCH` (or smoke-tested on a compatible kernel/distro), awaiting native execution verification.
-- **Build-unverified**: Target platform approved in architecture, awaiting initial build spike verification or native platform runner.
-- **Unsupported**: Explicitly out of scope.
+- **Supported**: Built, verified, and smoke-tested on the target OS and CPU architecture with recorded execution evidence in project verification documentation.
+- **Build-verified**: Compiled for the target `GOOS`/`GOARCH` without errors (or the resulting binary smoke-tested on a compatible OS family), but not executed on real hardware running that exact operating system.
+- **Build-unverified**: An approved architectural target whose build feasibility has not yet been demonstrated in project spikes or CI. Follow-up issues are assigned to implement and verify the build.
+- **Unsupported**: Explicitly out of scope, untested, and without design accommodation or support commitments.
+
+> **Desktop GUI vs. Bootstrap Command Note**: The `hx-desktop` rows below record historical evidence from the F01 Wails spike ([docs/spikes/2026-11-build-feasibility.md#desktop-build](spikes/2026-11-build-feasibility.md#desktop-build)) only. The default F02 desktop command is a pure Go (`CGO_ENABLED=0`), headless command-only artifact with no GUI dependencies and no GUI tier claim. Full desktop GUI capabilities and tier claims land in [C03 (#60)](https://github.com/hndrxc/hx/issues/60).
 
 | Binary | GOOS / GOARCH | OS Family / Version | CGO | Tier | Evidence | Owning Issue |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -75,7 +78,7 @@ System capability mappings, storage backends, and isolation boundaries across su
 
 ## 4. Headless Build Isolation Contract
 
-As decided in [ADR-0005](adr/0005-supported-platforms-and-build-targets.md) and enforced in [F02 (#10)](https://github.com/hndrxc/hx/issues/10):
-1. **Zero CGO for Headless**: Headless binaries (`hx`, `hx hub`, `hx tui`, `hx-agent`) and their internal packages MUST build with `CGO_ENABLED=0`.
+As decided in [ADR-0005](adr/0005-supported-platforms-and-build-targets.md) and established in [F02 (#10)](https://github.com/hndrxc/hx/issues/10):
+1. **Zero CGO for Headless**: Headless binaries (`hx`, `hx hub`, `hx tui`, `hx-agent`, and default `hx-desktop`) and their internal packages MUST build with `CGO_ENABLED=0`.
 2. **Zero Native GUI Dependencies for Tests**: `go test ./...` across all non-desktop packages MUST pass on systems without GTK4, WebKitGTK, X11, or Wayland libraries installed.
-3. **Isolation Mechanism**: Follow-up issue [F02 (#10)](https://github.com/hndrxc/hx/issues/10) selects the isolation mechanism between desktop and headless packages (recommended: `//go:build desktop` build tags on Wails-importing source files).
+3. **Isolation Mechanism**: Selected in [F02 (#10)](https://github.com/hndrxc/hx/issues/10): F02 contains zero GUI library dependencies. Future Wails-importing source files in `cmd/hx-desktop` and `internal/desktop` MUST use the `//go:build desktop` build tag so that default builds and tests remain CGO-free and headless.
