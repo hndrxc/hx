@@ -25,6 +25,7 @@ cmd/hx/                    Cobra root; `hub` and `tui` subcommands (F02)
 cmd/hx-desktop/            Wails v3 entry (F02/C03)
 cmd/hx-agent/              device agent entry (F02/A02)
 proto/hx/v1/               protobuf sources (D01)
+internal/architecture/     import-policy tests (F02)
 internal/buildinfo/        version metadata (F02)
 internal/domain/           provider-neutral resources/observations/events (D01)
 internal/api/              generated protobuf + Connect code (D01)
@@ -87,9 +88,11 @@ The following dependency rules define the allowable imports across internal pack
 
 ## Verification
 
-Planned for enforcement in Go module layout issue F02 (https://github.com/hndrxc/hx/issues/10) via automated CI checks:
-- An automated test will execute `go list -deps` on each binary target (`cmd/hx`, `cmd/hx-desktop`, `cmd/hx-agent`) and package subtree.
-- The test parses the resulting dependency graph to verify the required allow/deny import rules across package boundaries.
+Enforced in Go module layout issue [F02 (#10)](https://github.com/hndrxc/hx/issues/10) via automated Go policy tests in `internal/architecture/`:
+- The test suite inspects binary targets (`cmd/hx`, `cmd/hx-desktop`, `cmd/hx-agent`) and internal packages against defined allow/deny import rules via Go source file AST scanning across all build configurations and tags (preventing unbuilt or build-tagged source files from evading import policy checks).
+- Both direct and transitive dependencies are verified to ensure client commands never import hub, egress, collector, or integration packages.
+- Leaf foundations (`internal/buildinfo` and future `internal/domain`, `internal/secret`, `internal/sanitize`) are prevented from importing other internal packages.
+- Includes negative test assertion cases ensuring violations are detected and not silently ignored.
 
 ## References
 

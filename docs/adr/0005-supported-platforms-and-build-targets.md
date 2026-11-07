@@ -55,7 +55,7 @@ We establish four rigorous platform support tiers for hx components:
 To prevent GUI dependencies (GTK4, WebKitGTK, X11, Wayland) and CGO requirements from leaking into headless builds or continuous integration checks:
 1. `hx` (hub, CLI, TUI) and `hx-agent` builds MUST NEVER require CGO or native GUI header libraries (`libgtk-4-dev`, `libwebkitgtk-6.0-dev`).
 2. Standard test execution (`go test ./...`) for all non-desktop packages MUST succeed in headless environments without CGO (`CGO_ENABLED=0`).
-3. Follow-up issue [F02 (#10)](https://github.com/hndrxc/hx/issues/10) selects the isolation mechanism between desktop and headless packages (recommended: `//go:build desktop` build tags on Wails-importing source files).
+3. Isolation mechanism established in [F02 (#10)](https://github.com/hndrxc/hx/issues/10): The core Go bootstrap contains zero GUI dependencies. When Wails v3 integration is introduced in [C03 (#60)](https://github.com/hndrxc/hx/issues/60), all Wails-importing source files in `cmd/hx-desktop` and `internal/desktop` MUST use the `//go:build desktop` build tag so that default compilation and test runs remain completely headless and CGO-free.
 
 ## Consequences
 - Single-command pure Go cross-compilation (`CGO_ENABLED=0 GOOS=windows GOARCH=amd64` and `CGO_ENABLED=0 GOOS=linux GOARCH=arm64`) is guaranteed for `hx` and `hx-agent`.

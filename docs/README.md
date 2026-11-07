@@ -1,7 +1,8 @@
 # hx Documentation
 
-**Status:** All components are planned; nothing beyond documentation is implemented yet.
+**Status:** Core Go module and minimal CLI bootstrap implemented in [F02 (#10)](https://github.com/hndrxc/hx/issues/10). `hx hub`, `hx tui` and bare `hx-agent`/`hx-desktop` exit 1; help/version exit 0; `hx` without arguments prints help and exits 0. Further subsystem implementations remain planned.
 
+- [Build & Verification Guide](build.md) — Toolchain requirements, headless build commands, version injection, GUI isolation, and import policy enforcement.
 - [Architecture Overview](architecture/overview.md) — System context, hub internals, remote read sequence, and vault lifecycle diagrams plus data flow rules.
 - [Threat Model](security/threat-model.md) — Trust zones, trust boundaries TB1–TB13, the root STRIDE register, residual risks, and the review checklist.
 - [ADR Index & Process](adr/README.md) — The architecture decision record process, template, and index of ADRs 0001–0012.
