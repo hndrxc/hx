@@ -135,7 +135,8 @@ go vet ./...
 
 Package dependency boundaries defined in [ADR-0011](adr/0011-package-layout-and-dependency-direction.md) are enforced by tests under `internal/architecture/`:
 
-- **Leaf Foundations:** `internal/buildinfo` (and future `internal/domain`, `internal/secret`, `internal/sanitize`) must never import any other `internal/` packages.
+- **Leaf Foundations:** `internal/buildinfo` and `internal/secret` (and future `internal/domain`, `internal/sanitize`) must never import any other `internal/` packages.
+- **Secret Ingestion Rule:** Only `internal/hub/vault` (and package `internal/secret` itself) may call `secret.FromBytes`; all other packages, including build-tagged files, are forbidden by AST inspection from directly constructing secret values.
 - **Client Isolation:** Client binaries (`cmd/hx-desktop`, `cmd/hx-agent`) and client package subtrees (`internal/cli`, etc.) must not import `internal/hub/...`, `internal/egress`, `internal/collector`, or `internal/integrations/...` (verified directly and transitively).
 - **Composition Exception:** `cmd/hx` may link both client and hub packages, but client front-ends (`internal/cli`) must not link hub packages.
 - **Integrations Isolation:** Provider packages may import only collector, egress, domain, secret, and sanitize; they must never import `internal/hub/...`. Only hub wires integrations.
