@@ -111,7 +111,7 @@ $ echo $?
 
 ## Contributing and Security
 
-- **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md) — Covers branch naming conventions, readiness criteria, required validation checks, PR workflow, and commit standards.
+- **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md) — Covers branch naming conventions, readiness criteria, required validation checks, and PR workflow.
 - **Security Policy:** [SECURITY.md](SECURITY.md) — Details current security guarantees, private vulnerability reporting guidelines, and secret handling policies.
 
 ---

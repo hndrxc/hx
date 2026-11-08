@@ -29,7 +29,7 @@ To protect the repository against supply-chain compromise, unauthorized writes, 
   permissions:
     contents: read
   ```
-- **Standard `pull_request` Trigger (No `pull_request_target`):** The workflow strictly uses the `pull_request` event. It explicitly rejects `pull_request_target`, which runs in the context of the base branch and receives read/write repository tokens by default (subject to workflow permissions) along with repository secrets. In contrast, standard `pull_request` runs for fork pull requests execute in the context of the fork with a read-only `GITHUB_TOKEN` and receive no repository secrets from the target repository.
+- **Standard `pull_request` Trigger (No `pull_request_target`):** Fork PR jobs run in the base repository against the PR merge commit, with a read-only `GITHUB_TOKEN` and no repository secrets. The workflow does not use `pull_request_target`, which runs in base-branch context with privileged defaults subject to workflow permissions; untrusted code must not execute in that context.
 - **No Secret References:** No repository secrets, deployment tokens, or API credentials are exposed or referenced in the CI workflow, and no repository secrets are provided to fork PRs by this workflow.
 - **Git Credential Hygiene:** The repository checkout action sets `persist-credentials: false`, ensuring the temporary authentication token is not persisted in the runner's git configuration or temp credentials store.
 - **SHA-Pinned Actions:** External actions are pinned to full immutable 40-character commit SHAs with version comments (see [Section 7](#7-action-pins-and-authoritative-references)), significantly reducing mutable-tag tampering and supply-chain risks.
@@ -57,10 +57,10 @@ bash scripts/check.sh all
 - **Command:** `bash scripts/check.sh formatting`
 - **Purpose:** Verifies that all tracked Go source code complies with standard `gofmt` formatting rules without mutating files.
 - **Scope & Mechanics:**
-  - Enumerates all tracked Go source files using `git ls-files '*.go'`.
+  - Enumerates all tracked Go source files using null-delimited `git ls-files -z '*.go'`.
   - Directly inspects files including those with build tags (e.g., `//go:build desktop` or `//go:build ignore`), which package-oriented formatters skip.
   - Non-mutating: runs `gofmt -l -e` to detect unformatted files and outputs a unified diff using `gofmt -d -e`. Files on disk are never modified.
-- **Failure Conditions:** Any unformatted Go file or syntax error exits 1 with the list of offending files and a unified diff.
+- **Failure Conditions:** Unformatted files exit 1 with the offending file list and a unified diff. Syntax errors exit 2 with gofmt parse diagnostics, before the list/diff reporting step.
 
 ### Check 2: `build`
 
@@ -140,9 +140,10 @@ To activate branch protection and enforce CI checks and Code Owner approvals, a 
 4. Under **Target branches**, add the default branch: `Include default branch` (`main`).
 5. Configure the following rules:
    - **Restrict deletions:** Enabled (prevents accidental or malicious deletion of `main`).
-   - **Block force pushes:** Enabled (ensures non-fast-forward push protection and linear commit integrity).
+   - **Block force pushes:** Enabled (prevents non-fast-forward pushes).
+   - **Require linear history:** Enabled (excludes merge commits and enforces the squash/rebase history policy).
    - **Require a pull request before merging:** Enabled.
-     - **Required approvals:** `1` minimum. (Note on repository eligibility: GitHub rulesets mandate that the most recent review approval cannot be from the pull request author or the pusher of the latest commit. Because repository collaborator `@hndrxc` is currently the sole maintainer and author, enforcing mandatory review approvals requires onboarding an additional distinct eligible reviewer or collaborator before pull requests can satisfy this rule; no settings changes are enforced in F03).
+     - **Required approvals:** `1` minimum. The PR author cannot approve their own PR; the most recent push also needs approval from someone other than its pusher. Since `@hndrxc` is currently the sole collaborator and Code Owner, first establish a distinct eligible reviewer and appropriate CODEOWNERS coverage for owner-authored PRs. Otherwise mandatory Code Owner approval cannot be satisfied. F03 makes no access or ruleset changes.
      - **Dismiss stale pull request approvals when new commits are pushed:** Enabled (ensures new pushes reset approval state).
      - **Require review from Code Owners:** Enabled (requires approval from the designated owner in `.github/CODEOWNERS` for protected paths).
      - **Require approval of the most recent push:** Enabled (prevents merging when commits are added after approval).
@@ -193,4 +194,26 @@ The configuration and security policies in this guide are derived from authorita
 
 ## 8. Verification Record
 
-Observed verification evidence, check execution outputs, and defect probe records will be recorded below upon completion of the verification suite.
+Implementation: [PR #86](https://github.com/hndrxc/hx/pull/86), with all four checks passing in [run 42450691609](https://github.com/hndrxc/hx/actions/runs/42450691609).
+
+The isolated, never-merged [sample PR #87](https://github.com/hndrxc/hx/pull/87) exercised four independent defects at commit `49e9a8f`. All four checks failed in [run 42450718671](https://github.com/hndrxc/hx/actions/runs/42450718671), with logs identifying the intended cause:
+
+| Check | Observed defect |
+| --- | --- |
+| `formatting` | `f03_format_probe.go` lacked standard spacing; the job printed its formatting diff. |
+| `build` | Windows-only source referenced undefined `f03UndefinedSymbol`. |
+| `test` | `TestF03Probe` failed with the intentional assertion message. |
+| `generated` | A generator created untracked `internal/buildinfo/f03-generated-probe.txt`. |
+
+After removing every probe at `40f1a6f`, all four checks passed in [recovery run 42450808183](https://github.com/hndrxc/hx/actions/runs/42450808183). No probe or generator is included in the implementation branch.
+
+Local verification on Linux amd64, Go 1.27.3:
+
+- `bash scripts/check.sh all`: passed, including all seven cross-build targets and the full headless test suite.
+- `CGO_ENABLED=0 go vet ./...`, `bash -n scripts/check.sh`, and `actionlint .github/workflows/ci.yml` (v1.7.12): passed.
+- Actual subprocess smoke: 13 help/version/unavailable-runtime scenarios passed across all three binaries.
+- Regression smoke: malformed Go syntax previously returned success from formatting; corrected code exits 2. An intentional Windows compiler failure now exits 1, removes temporary output, and produces no trap error.
+- All three issue YAML configurations parsed; 139 local Markdown link targets and one heading anchor resolved. GitHub's CODEOWNERS error API returned an empty error list. Action tag SHAs matched the committed pins.
+- MIT license checksum unchanged; new files had no matches for the checked private-key, GitHub-token, AWS-key and bearer-token patterns.
+
+Windows/ARM64 native execution, a real fork PR, GUI behavior and future F04 gates were not exercised. Repository review/check rules and private reporting remain unchanged; the limitations described above and in [SECURITY.md](../SECURITY.md) still apply.

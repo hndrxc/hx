@@ -44,6 +44,8 @@ Use prefixes matching the issue intent, followed by the issue number and a descr
 
 Before submitting a pull request, run the standard verification script `scripts/check.sh`. Checks run with local Go toolchain commands without requiring live credentials or third-party linters (first run or module downloads may require network access for Go module proxy and checksum verification):
 
+Stage intended edits (`git add ...`) or commit them before running `generated` or `all`: generation is compared against the index, and unrelated unstaged or untracked files also fail the check. Never stage unexpected generated output merely to silence a failure; review and correct its cause.
+
 ```bash
 # 1. Go formatting checks (standard gofmt)
 bash scripts/check.sh formatting
@@ -54,7 +56,7 @@ bash scripts/check.sh build
 # 3. Unit and architecture policy test execution (CGO_ENABLED=0 go test ./...)
 bash scripts/check.sh test
 
-# 4. Generated file verification, go.mod consistency, and git status cleanliness
+# 4. Generated file verification, go.mod consistency, and index-baseline cleanliness
 bash scripts/check.sh generated
 ```
 
