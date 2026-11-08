@@ -1,6 +1,6 @@
 # Compatibility & Capability Matrix
 
-Last verified: 2026-11-06
+Last verified: 2026-11-08
 
 > **Policy Note**: This document serves as the single source of truth for living version numbers, dependency pins, platform support tiers, and system capability mappings. Architectural decisions and policies are recorded in [Architecture Decision Records](adr/README.md) (ADRs), while concrete dependency versions and verification dates are tracked here.
 >
@@ -11,12 +11,14 @@ Last verified: 2026-11-06
 
 All dependencies adhere to the selection policy defined in [ADR-0004](adr/0004-toolchain-and-dependency-selection.md): latest stable releases only and zero pre-releases.
 
-In accordance with the F02 bootstrap design, direct imports and locks in `go.mod` / `go.sum` are intentionally minimal: only Go toolchain `1.27.3`, direct runtime dependency `github.com/spf13/cobra v1.10.2`, and its transitive dependencies (`github.com/spf13/pflag v1.0.9` and `github.com/inconshreveable/mousetrap v1.1.0`) are pinned and verified. Selected future dependencies (Charm v2, ConnectRPC v2, Protobuf, modernc SQLite, tsnet, Wails v3) are documented below as architectural selections to be added by their owning follow-up issues.
+In accordance with the F02 bootstrap design and S01 secret values implementation, direct imports and locks in `go.mod` / `go.sum` are intentionally minimal: only Go toolchain `1.27.3`, direct runtime dependencies `github.com/spf13/cobra v1.10.2`, `golang.org/x/term v0.47.0`, and `golang.org/x/sys v0.49.0`, and transitive dependencies (`github.com/spf13/pflag v1.0.9` and `github.com/inconshreveable/mousetrap v1.1.0`) are pinned and verified. Selected future dependencies (Charm v2, ConnectRPC v2, Protobuf, modernc SQLite, tsnet, Wails v3) are documented below as architectural selections to be added by their owning follow-up issues.
 
 | Component | Module / Artifact | Selected Version | Released | Go Directive | License | Primary Source | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Go Toolchain** | `go` | 1.27.3 | 2026-10-19 | 1.27.3 | BSD-3-Clause | [go.dev/dl](https://go.dev/dl/) | Supported major line (go1.27.x). Module directive set to `1.27.3` due to `tailscale.com` requirement. |
 | **CLI Framework** | `github.com/spf13/cobra` | v1.10.2 | 2025-12-03 | 1.15 | Apache-2.0 | [github.com/spf13/cobra](https://github.com/spf13/cobra/releases/tag/v1.10.2) | Subcommand routing and POSIX flag handling for `hx`. |
+| **Terminal Input** | `golang.org/x/term` | v0.47.0 | 2026-10-09 | 1.26.0 | BSD-3-Clause | [pkg.go.dev/golang.org/x/term@v0.47.0](https://pkg.go.dev/golang.org/x/term@v0.47.0) | Echo-disabled TTY secret input (`internal/secret`). |
+| **Low-Level OS** | `golang.org/x/sys` | v0.49.0 | 2026-10-06 | 1.26.0 | BSD-3-Clause | [pkg.go.dev/golang.org/x/sys@v0.49.0](https://pkg.go.dev/golang.org/x/sys@v0.49.0) | Linux memory protection (`internal/secret`) and transitive via x/term. |
 | **TUI Core** | `charm.land/bubbletea/v2` | v2.1.1 | 2026-10-28 | 1.26.0 | MIT | [charm.land/bubbletea/v2](https://pkg.go.dev/charm.land/bubbletea/v2@v2.1.1) | Elm-architecture terminal UI runtime for `hx tui`. |
 | **TUI Styling** | `charm.land/lipgloss/v2` | v2.0.6 | 2026-08-11 | 1.25.0 | MIT | [charm.land/lipgloss/v2](https://pkg.go.dev/charm.land/lipgloss/v2@v2.0.6) | Declarative terminal styling and layout primitives. |
 | **TUI Components** | `charm.land/bubbles/v2` | v2.2.1 | 2026-08-24 | 1.25.0 | MIT | [charm.land/bubbles/v2](https://pkg.go.dev/charm.land/bubbles/v2@v2.2.1) | Interactive terminal components (spinners, viewports, tables). |
