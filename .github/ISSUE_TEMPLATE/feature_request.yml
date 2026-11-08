@@ -1,0 +1,80 @@
+name: Feature Request
+description: Propose a scoped feature or enhancement with clear boundaries
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for proposing a feature or enhancement!
+        Every proposed feature must define its boundaries, dependencies, acceptance criteria, and what is out of scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement / Motivation
+      description: What problem does this feature solve? What user story or architectural goal does it address?
+      placeholder: Describe the problem, user need, or architectural requirement.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Clear and concise description of the proposed behavior, API, or interface.
+      placeholder: Describe the proposed design and observable behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies & Prerequisites
+      description: Required foundational work, merged PRs, or prerequisite architectural decisions (ADRs).
+      placeholder: |
+        - Requires ADR-xxxx / Issue #xx
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Specific, testable, and observable criteria that define when this feature is complete.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation Plan
+      description: How the changes will be verified (e.g. CI checks, automated tests, manual testing steps).
+      placeholder: Automated tests in `...`, check script commands.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: What is explicitly excluded from this proposed feature or deferred to future work.
+      placeholder: |
+        - Implementation of downstream providers
+        - External deployment automation
+    validations:
+      required: true
+  - type: textarea
+    id: security_impact
+    attributes:
+      label: Security & Permission Considerations
+      description: Does this feature introduce new credentials, network egress, IPC/RPC endpoints, or sensitive state?
+      placeholder: None / Details of permission and security boundary impact.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have verified this proposal contains no private secrets, tokens, or credentials.
+          required: true
+        - label: I understand that pull requests implementing this feature must link to this issue.
+          required: true

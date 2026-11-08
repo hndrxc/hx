@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Reporting
+    url: https://github.com/hndrxc/hx/blob/main/SECURITY.md
+    about: No private reporting channel is currently published. Read the security policy for current limitations; do not disclose vulnerabilities in public issues.

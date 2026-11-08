@@ -8,7 +8,7 @@ This guide documents the toolchain, build commands, version embedding, build tag
 
 ## 1. Toolchain & Dependencies
 
-The repository uses standard Go toolchain mechanics without external build automation:
+The repository uses standard Go toolchain mechanics for local compilation, with continuous integration verification automated via `scripts/check.sh` and GitHub Actions (see [CI & Ruleset Configuration](ci.md)):
 
 - **Go Toolchain:** Go `1.27.3` (`go 1.27.3` in `go.mod`).
 - **Direct Runtime Dependency:** `github.com/spf13/cobra v1.10.2` (and transitive dependencies including `github.com/spf13/pflag v1.0.9` and `github.com/inconshreveable/mousetrap v1.1.0` locked in `go.mod` / `go.sum`).
@@ -177,6 +177,7 @@ Unsupported targets: macOS (all versions), Windows 10, Windows ARM64.
 - ADR-0004: Toolchain and Dependency Selection: [docs/adr/0004-toolchain-and-dependency-selection.md](adr/0004-toolchain-and-dependency-selection.md)
 - ADR-0005: Supported Platforms and Build Targets: [docs/adr/0005-supported-platforms-and-build-targets.md](adr/0005-supported-platforms-and-build-targets.md)
 - ADR-0011: Package Layout and Dependency Direction: [docs/adr/0011-package-layout-and-dependency-direction.md](adr/0011-package-layout-and-dependency-direction.md)
+- CI & Ruleset Configuration: [docs/ci.md](ci.md)
 
 ## 10. F02 Verification Record — 2026-11-06
 

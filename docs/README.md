@@ -4,6 +4,10 @@
 
 - [Build & Verification Guide](build.md) — Toolchain requirements, headless build commands, version injection, GUI isolation, and import policy enforcement.
 - [Architecture Overview](architecture/overview.md) — System context, hub internals, remote read sequence, and vault lifecycle diagrams plus data flow rules.
+- [CI & Ruleset Configuration](ci.md) — Specification of continuous integration checks (formatting, build, test, generated), fork execution security, and repository protection ruleset setup.
+- [Contributing Guide](../CONTRIBUTING.md) — Contribution workflow, branch conventions, PR acceptance criteria, and local check commands.
+- [Security Policy](../SECURITY.md) — Security scope, vulnerability disclosure procedure, and credential handling rules.
+- [Project README](../README.md) — System overview, implemented vs. planned status, credential-free quickstart, and license.
 - [Threat Model](security/threat-model.md) — Trust zones, trust boundaries TB1–TB13, the root STRIDE register, residual risks, and the review checklist.
 - [ADR Index & Process](adr/README.md) — The architecture decision record process, template, and index of ADRs 0001–0012.
 - [ADR-0001: Record Architecture Decisions](adr/0001-record-architecture-decisions.md) — Adopts the ADR process as the record for F01 and all later security-relevant decisions.

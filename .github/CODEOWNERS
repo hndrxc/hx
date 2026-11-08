@@ -1,0 +1,36 @@
+# hx Code Owners
+#
+# IMPORTANT NOTICE:
+# Presence of this CODEOWNERS file documents code ownership and configures automatic
+# review assignment for matching pull requests on GitHub. It does NOT automatically
+# enforce branch protection or mandate review approvals on its own. Branch protection
+# and rulesets (such as required reviews from Code Owners, check runs, and merge controls)
+# must be configured explicitly in GitHub repository settings.
+# See docs/ci.md for repository ruleset and CI configuration details.
+#
+# Default ownership (`* @hndrxc`) provides complete coverage across all current
+# and future repository paths. Explicit patterns are provided below for existing assets
+# without redundant overlapping globs or nonexistent path patterns that trigger GitHub errors.
+#
+# Planned architectural subsystems (ADR-0011 target packages including vault, auth,
+# enroll, client, egress, RPC, IPC, collector, integrations, proto, agent, and desktop),
+# generic manifests, and future release configurations are documented here as design targets
+# and are fully covered by the default owner rule until their directories are created on disk.
+
+# -----------------------------------------------------------------------------
+# Default Owner
+# -----------------------------------------------------------------------------
+* @hndrxc
+
+# -----------------------------------------------------------------------------
+# Explicit Existing Paths
+# -----------------------------------------------------------------------------
+/.github/workflows/ @hndrxc
+/.github/CODEOWNERS @hndrxc
+/scripts/ @hndrxc
+/go.mod @hndrxc
+/go.sum @hndrxc
+/SECURITY.md @hndrxc
+/docs/security/ @hndrxc
+/cmd/ @hndrxc
+/internal/ @hndrxc
