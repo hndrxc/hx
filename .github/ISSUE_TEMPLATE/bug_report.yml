@@ -1,0 +1,90 @@
+name: Bug Report
+description: Report an actionable defect or unexpected behavior in an implemented feature
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a defect!
+        Please ensure the behavior relates to currently implemented features.
+        **Do not report security vulnerabilities here.** For sensitive vulnerabilities, see [SECURITY.md](https://github.com/hndrxc/hx/blob/main/SECURITY.md).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of the bug.
+      placeholder: Describe what happened and what was expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Exact commands and steps to reproduce the issue.
+      placeholder: |
+        1. Run `...`
+        2. Observe error `...`
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment & Version
+      description: Platform OS, architecture, and exact `hx version` output.
+      placeholder: |
+        - OS: [e.g. Linux Ubuntu 24.04, Windows 11]
+        - Arch: [e.g. amd64, arm64]
+        - Version: [e.g. hx version dev]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Terminal Output
+      description: Paste terminal output or error messages. Ensure no secrets, tokens, or credentials are included.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Prerequisites & Dependencies
+      description: Any required setup, external services, or prerequisite configuration.
+      placeholder: None
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria / Expected Fix
+      description: Observable criteria defining when this bug is considered resolved.
+      placeholder: |
+        - [ ] Criterion 1
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation Plan
+      description: How the fix should be verified (unit tests, repro script, manual check).
+      placeholder: Run `go test ./...` or specific repro command.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: What is explicitly excluded from this bug fix.
+      placeholder: Refactoring unrelated packages, breaking API changes.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have verified this report contains no private secrets, tokens, credentials, or sensitive data.
+          required: true
+        - label: I have confirmed this bug report does not disclose a security vulnerability (which should go to SECURITY.md).
+          required: true
