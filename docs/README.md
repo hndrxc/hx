@@ -9,6 +9,7 @@
 - [Security Policy](../SECURITY.md) — Security scope, vulnerability disclosure procedure, and credential handling rules.
 - [Project README](../README.md) — System overview, implemented vs. planned status, credential-free quickstart, and license.
 - [Threat Model](security/threat-model.md) — Trust zones, trust boundaries TB1–TB13, the root STRIDE register, residual risks, and the review checklist.
+- [Secret Handling & Memory Protection](security/secret-handling.md) — Security guarantees, memory protections, Go runtime limits, ingestion policy, and handle contracts (`internal/secret`).
 - [ADR Index & Process](adr/README.md) — The architecture decision record process, template, and index of ADRs 0001–0012.
 - [ADR-0001: Record Architecture Decisions](adr/0001-record-architecture-decisions.md) — Adopts the ADR process as the record for F01 and all later security-relevant decisions.
 - [ADR-0002: Hub-Owned Credentials and Read-Only Integrations](adr/0002-hub-owned-credentials-and-read-only-integrations.md) — Provider credentials live only in the hub vault; integrations are read-only through Phase 3.
