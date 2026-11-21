@@ -117,8 +117,8 @@ To prevent silent build drift and hidden generator requirements:
 
 ## 5. Security Gates Boundary (F03 vs. F04)
 
-- **F03 Scope (This Work):** Establishes the foundational contribution workflow, pull request templates, CODEOWNERS file, repository protection documentation, and the four baseline CI checks (`formatting`, `build`, `test`, `generated`).
-- **F04 Scope (Issue #20, Security Gates and Vulnerability Baseline):** Security analysis gates—including static analysis (`staticcheck`), vulnerability scanning (`govulncheck`), secret scanning, and forbidden-identifier AST inspection (e.g. `InsecureSkipVerify` prohibitions)—are owned by Issue #20 (F04). This is distinct from downstream release artifact signing, SLSA provenance generation, and release SBOM publishing, which are owned by Issue #41 (F05). F03 does not couple CI to premature security gates.
+- **F03 Scope:** Establishes the foundational contribution workflow, pull request templates, CODEOWNERS file, repository protection documentation, and the four baseline CI checks (`formatting`, `build`, `test`, `generated`).
+- **F04 Scope (Issue #20, Security Gates and Vulnerability Baseline):** Security gates are defined in `.github/workflows/security.yml` with stable jobs `security-go`, `security-policy`, `fuzz-smoke`, `dependency-config` and the scheduled/manual-only `fuzz-long`, driven by `scripts/security.sh` (`install`, `go`, `fuzz-smoke`, `fuzz-long`). Names, commands, trigger budgets, tool pins, the Semgrep cooperative scope and no-inline-suppression policy, the Go 1.27.4 patched scan toolchain (separate from the `go.mod` minimum), and the narrowly reviewed F04-001 gosec G304 exception (expires 2027-02-20) are documented in [docs/security/ci-gates.md](security/ci-gates.md); updates follow the [dependency update policy](security/dependency-updates.md). This is distinct from downstream release artifact signing, SLSA provenance generation, and release SBOM publishing, which are owned by Issue #41 (F05).
 
 ---
 
@@ -154,6 +154,11 @@ To activate branch protection and enforce CI checks and Code Owner approvals, a 
        - `build`
        - `test`
        - `generated`
+       - `security-go`
+       - `security-policy`
+       - `fuzz-smoke`
+       - `dependency-config`
+     - Do not require `fuzz-long`; it only runs on `main` by schedule or manual dispatch.
    - **Bypass List:** Leave the ruleset bypass list empty (no roles, teams, or apps granted bypass permissions), ensuring rules apply uniformly.
 6. **Merge Strategy & Policy:** Pull requests are merged manually via Squash and Merge or Rebase and Merge per maintainer review. Auto-merge is not enabled as a repository policy.
 

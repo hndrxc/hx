@@ -1,0 +1,70 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "enabledManagers": [
+    "gomod",
+    "github-actions",
+    "custom.regex"
+  ],
+  "automerge": false,
+  "dependencyDashboard": { "enabled": true },
+  "dependencyDashboardApproval": false,
+  "pinDigests": true,
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "prConcurrentLimit": 5,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Digest-pinned Semgrep image in the security workflow",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/security\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?<depName>semgrep/semgrep):(?<currentValue>[0-9][0-9A-Za-z.+_-]*)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Nothing is ever merged by Renovate; a human reviews every PR",
+      "matchPackageNames": ["*"],
+      "automerge": false
+    },
+    {
+      "matchManagers": ["gomod"],
+      "addLabels": ["go"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["github-actions"],
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "addLabels": ["security-tooling"],
+      "pinDigests": true
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": false,
+    "schedule": ["before 4am on the first day of the month"],
+    "labels": ["dependencies", "lockfile-maintenance"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "automerge": false,
+    "dependencyDashboardApproval": false,
+    "labels": ["dependencies", "security"],
+    "commitMessageSuffix": "[SECURITY]"
+  }
+}
