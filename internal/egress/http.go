@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/hndrxc/hx/internal/egress/tlstrust"
 )
 
 const (
@@ -41,9 +43,8 @@ func (t *schemeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (p *Policy) newTransport(scheme string) *http.Transport {
-	return &http.Transport{
+	tr := &http.Transport{
 		Proxy:                  nil,
-		DialContext:            func(ctx context.Context, _, addr string) (net.Conn, error) { return p.dialAddr(ctx, scheme, addr) },
 		DisableKeepAlives:      true,
 		DisableCompression:     true,
 		ForceAttemptHTTP2:      false,
@@ -51,6 +52,44 @@ func (p *Policy) newTransport(scheme string) *http.Transport {
 		MaxResponseHeaderBytes: maxHeaderBytes,
 		MaxIdleConns:           0,
 	}
+	if scheme == "https" {
+		// TLS is performed here, per connection, so the store binding is
+		// consulted for every handshake. TLSClientConfig stays unset.
+		tr.DialTLSContext = func(ctx context.Context, _, addr string) (net.Conn, error) {
+			return p.dialTLSAddr(ctx, scheme, addr)
+		}
+	} else {
+		tr.DialContext = func(ctx context.Context, _, addr string) (net.Conn, error) {
+			ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
+			defer cancel()
+			return p.dialAddr(ctx, scheme, addr)
+		}
+	}
+	return tr
+}
+
+// dialTLSAddr dials and handshakes an https connection. net/http detaches the
+// dial context from request cancellation and its deadline, so the policy
+// timeout is applied here to bound lookup, connect and handshake.
+func (p *Policy) dialTLSAddr(ctx context.Context, scheme, addr string) (net.Conn, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
+	defer cancel()
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, ErrDenied
+	}
+	if _, err := strconv.ParseUint(portStr, 10, 16); err != nil {
+		return nil, ErrDenied
+	}
+	t, err := p.authorize(&url.URL{Scheme: scheme, Host: net.JoinHostPort(host, portStr)})
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.dial(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	return p.handshakeTLS(ctx, t, conn)
 }
 
 // dialAddr converts a stdlib host:port address into an authorized target
@@ -148,6 +187,20 @@ func mapErr(ctx context.Context, err error) error {
 		return cerr
 	}
 	switch {
+	case errors.Is(err, tlstrust.ErrUnapproved):
+		return tlstrust.ErrUnapproved
+	case errors.Is(err, tlstrust.ErrPinMismatch) && errors.Is(err, tlstrust.ErrAudit):
+		return errors.Join(tlstrust.ErrPinMismatch, tlstrust.ErrAudit)
+	case errors.Is(err, tlstrust.ErrPinMismatch):
+		return tlstrust.ErrPinMismatch
+	case errors.Is(err, tlstrust.ErrAudit):
+		return tlstrust.ErrAudit
+	case errors.Is(err, tlstrust.ErrInvalid):
+		return tlstrust.ErrInvalid
+	case errors.Is(err, tlstrust.ErrStore):
+		return tlstrust.ErrStore
+	case errors.Is(err, ErrCertificate):
+		return ErrCertificate
 	case errors.Is(err, ErrDenied):
 		return ErrDenied
 	case errors.Is(err, ErrResolve):
