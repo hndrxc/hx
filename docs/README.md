@@ -14,6 +14,7 @@
 - [Audit Log](security/audit-log.md) — S03 (#13) tamper-evident audit chain: wire v1 contract, hook ordering, crash recovery, `hx audit verify`, safety limits, export and rotation policy.
 - [Client and Device Enrollment](security/enrollment.md) — S07 (#18) operator approval, certificate renewal and revocation, tailnet role binding, and platform credential storage contracts.
 - [Hub Transport](security/hub-transport.md) — S08 (#19) authenticated tailnet RPC and local IPC adapters.
+- [Security Foundation Gate](security/security-foundation.md) — S09 (#21) credential-free integration and race verification required before live collectors.
 - [ADR Index & Process](adr/README.md) — The architecture decision record process, template, and index of ADRs 0001–0012.
 - [ADR-0001: Record Architecture Decisions](adr/0001-record-architecture-decisions.md) — Adopts the ADR process as the record for F01 and all later security-relevant decisions.
 - [ADR-0002: Hub-Owned Credentials and Read-Only Integrations](adr/0002-hub-owned-credentials-and-read-only-integrations.md) — Provider credentials live only in the hub vault; integrations are read-only through Phase 3.

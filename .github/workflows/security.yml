@@ -109,6 +109,31 @@ jobs:
       - name: Fuzz smoke
         run: bash scripts/security.sh fuzz-smoke
 
+  security-foundation:
+    name: security-foundation
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go (security patch release)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.4"
+          cache: false
+      - name: Security foundation race tests (fixtures only)
+        env:
+          CGO_ENABLED: "1"
+        run: >-
+          go test -tags securityfoundation -race -count=1 -timeout 8m -v
+          -run '^TestSecurityFoundation'
+          ./internal/hub/rpc ./internal/egress
+
   fuzz-long:
     name: fuzz-long
     if: >-
