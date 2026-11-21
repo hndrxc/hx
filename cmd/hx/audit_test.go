@@ -2,12 +2,68 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func FuzzParseCheckpoint(f *testing.F) {
+	f.Add(uint64(1), []byte("a"), uint8(0), "x")
+	f.Add(uint64(0), []byte(""), uint8(1), "")
+	f.Add(uint64(1<<63), []byte("z"), uint8(2), "sequence")
+	f.Add(uint64(7), []byte("q"), uint8(3), "{}")
+	f.Add(uint64(7), []byte("q"), uint8(4), "extra")
+	f.Fuzz(func(t *testing.T, seq uint64, hb []byte, mode uint8, extra string) {
+		if len(hb) > 64 || len(extra) > 256 {
+			t.Skip()
+		}
+		sum := sha256.Sum256(hb)
+		hash := hex.EncodeToString(sum[:])
+		valid := fmt.Sprintf(`{"sequence":%d,"hash":%q}`, seq, hash)
+		want, ok := parseCheckpoint([]byte(valid))
+		if !ok || want.Sequence != seq || want.Hash != hash {
+			t.Fatalf("valid checkpoint rejected or altered: %q", valid)
+		}
+		qe, _ := json.Marshal(extra)
+		var bad string
+		switch mode % 5 {
+		case 0: // duplicate sequence
+			bad = fmt.Sprintf(`{"sequence":%d,"hash":%q,"sequence":%d}`, seq, hash, seq)
+		case 1: // duplicate hash
+			bad = fmt.Sprintf(`{"sequence":%d,"hash":%q,"hash":%s}`, seq, hash, qe)
+		case 2: // second object
+			bad = valid + valid
+		case 3: // trailing garbage token
+			bad = valid + " " + string(qe)
+		default: // unknown property
+			bad = fmt.Sprintf(`{"sequence":%d,"hash":%q,%s:1}`, seq, hash, qe)
+		}
+		if cp, ok := parseCheckpoint([]byte(bad)); ok {
+			t.Fatalf("malformed checkpoint accepted as %+v: %q", cp, bad)
+		}
+		// Arbitrary raw input: anything accepted must be canonical-stable.
+		for _, raw := range []string{extra, valid[:len(valid)/2]} {
+			cp, ok := parseCheckpoint([]byte(raw))
+			if !ok {
+				continue
+			}
+			canon, err := json.Marshal(cp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			again, ok := parseCheckpoint(canon)
+			if !ok || again != cp || !checkpointHashRE.MatchString(cp.Hash) {
+				t.Fatalf("accepted %q does not roundtrip: %s", raw, canon)
+			}
+		}
+	})
+}
 
 const (
 	auditZeroHash = "0000000000000000000000000000000000000000000000000000000000000000"

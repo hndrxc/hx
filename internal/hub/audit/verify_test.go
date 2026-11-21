@@ -240,6 +240,41 @@ func TestRollbackAndAnchors(t *testing.T) {
 	}
 }
 
+// FuzzVerifyAnchoredFrame feeds mutated/truncated bytes of the canonical
+// one-record fixture to Verify with the trusted sequence-1 anchor. Verify must
+// never panic; any success must yield exactly the fixture head and the input
+// must begin with the canonical frame (no mutated record is ever accepted).
+func FuzzVerifyAnchoredFrame(f *testing.F) {
+	frame, head, err := encode(vEvent(1), Genesis())
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Add(frame)
+	f.Add(frame[:len(frame)/2])
+	f.Add(frame[:len(frame)-1])
+	f.Add(append(append([]byte{}, frame...), frame...))
+	f.Add(append(append([]byte{}, frame...), 0))
+	f.Add([]byte{})
+	f.Add([]byte{0xff, 0xff, 0xff, 0xff})
+	f.Add(bytes.Repeat([]byte{0}, 64))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 4*len(frame)+64 {
+			t.Skip()
+		}
+		anchor := head
+		got, err := Verify(bytes.NewReader(data), &anchor)
+		if err != nil {
+			return
+		}
+		if got != head {
+			t.Fatalf("accepted with wrong head: %+v", got)
+		}
+		if !bytes.HasPrefix(data, frame) {
+			t.Fatalf("accepted input that does not start with the canonical frame (len %d)", len(data))
+		}
+	})
+}
+
 func TestTornTail(t *testing.T) {
 	frames, cps := vChain(t, 3)
 	prefix := vJoin(frames[:2]...)
