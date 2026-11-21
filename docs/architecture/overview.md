@@ -10,6 +10,7 @@ Related design and security documents:
 - [Threat Model and Trust Boundaries](../security/threat-model.md)
 - [Architecture Decision Records](../adr/README.md)
 - [Compatibility and Capability Matrix](../compatibility.md)
+- [Untrusted Text Sanitization](../security/text-sanitization.md)
 - [AI Investigation Inputs](../ai-investigation-inputs.md)
 
 ---
