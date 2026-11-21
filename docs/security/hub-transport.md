@@ -36,6 +36,7 @@ ambient credential reads `tsnet/tsnet.go` L773–L811, `AdvertiseTags` L330,
 | `rpc.ServeTailnet(ctx, stateDir, rpc.Config, loginURL func(string))` | Refuses start if any ambient tsnet credential/control variable (`TS_AUTHKEY`, `TS_AUTH_KEY`, `TS_CONTROL_URL`, `TS_CLIENT_SECRET`, `TS_CLIENT_ID`, `TS_ID_TOKEN`, `TS_AUDIENCE`) is set; calls `envknob.SetNoLogsNoSupport()`; state in `<stateDir>/tsnet` (`0700`, owned by the service user); hostname `hx-hub`, tag `tag:hx-hub`; listens only via `tsnet.Server.Listen("tcp", ":443")`, capped by `netutil.LimitListener`, with hub-CA TLS requiring client certs. tsnet logs are discarded; only a vetted `https://login.tailscale.com/...` login URL is delegated to the local `loginURL` callback, never logged. |
 | `ipc.ListenUnix(path, adminGID, hooks)` | Linux Unix socket, mode `0660`, group `adminGID`; per-connection `SO_PEERCRED` check. |
 | `ipc.ListenPipe(name, sid, hooks)` | Windows named pipe; `sid` must equal the service process account SID; protected DACL grants only `sid`; per-connection client SID check. |
+| `ipc.DialPipe(ctx, name)` | Windows companion client. Validates `name` as a local pipe name (no remote/UNC server); before writing, checks the pipe's owner SID equals the caller's own token user SID; opens with client security QoS at **Identification** level (not go-winio's anonymous default, and never Impersonation/Delegation, so the server cannot act as the client); writes the one preface byte `0x01` before any framed exchange. |
 | `Listener.Serve(ctx, handler)` | `handler` is `func(context.Context, audit.ID, []byte) ([]byte, error)`; the `audit.ID` is the opaque peer actor ID. Serves framed request/response messages; returns when `ctx` ends. |
 
 ## Remote request rules
@@ -88,7 +89,13 @@ under a 10 s deadline.
   the service is admitted. The client must first send the single transport
   preface byte `0x01`; the server consumes it, impersonates the client and
   compares the token user SID with `sid`, and only then exchanges framed
-  payloads. PIDs are never consulted.
+  payloads. PIDs are never consulted. The token check is an identity query
+  only: `DialPipe` grants Identification-level QoS, enough for the server to
+  read the client SID but not to act as the client. Server-side OS token and
+  protected-DACL checks remain authoritative regardless of client behaviour:
+  a different SID, or an anonymous/unidentifiable client token (e.g. a
+  generic go-winio dial with anonymous QoS), is denied. Client-side owner
+  check guards against connecting to a squatted pipe owned by another SID.
 - Local IPC authenticates the operator (enrollment step 3/5) independently of
   tailnet identity; it carries no remote credential.
 

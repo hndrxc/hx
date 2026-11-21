@@ -46,27 +46,46 @@ func otherSID(t *testing.T, self *windows.SID) *windows.SID {
 	return nil
 }
 
-// rawDial connects without sending the transport preface.
+// rawDial connects through go-winio's default anonymous-level SQOS without
+// sending the transport preface. Only descriptor and anonymous-denial tests
+// use it; authorized clients use production DialPipe.
 func rawDial(t *testing.T, name string) (net.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return winio.DialPipeContext(ctx, localPipePrefix+name)
 }
 
-// dial connects and writes the one-byte transport preface the server must
-// read before ImpersonateNamedPipeClient has a client message context.
+// dial connects with production DialPipe, which sends the preface itself.
 func dial(t *testing.T, name string) (net.Conn, error) {
-	c, err := rawDial(t, name)
-	if err != nil {
-		return nil, err
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return DialPipe(ctx, name)
+}
+
+// acceptAsync runs raw.Accept in a goroutine so go-winio creates a listening
+// pipe instance. The returned func waits (bounded) for the accept result and
+// closes any accepted connection.
+func acceptAsync(t *testing.T, raw net.Listener) func() {
+	t.Helper()
+	res := make(chan net.Conn, 1)
+	go func() {
+		c, err := raw.Accept()
+		if err != nil {
+			res <- nil
+			return
+		}
+		res <- c
+	}()
+	return func() {
+		select {
+		case c := <-res:
+			if c != nil {
+				c.Close()
+			}
+		case <-time.After(5 * time.Second):
+			t.Error("accept did not complete")
+		}
 	}
-	_ = c.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	if _, err := c.Write([]byte{pipePreface}); err != nil {
-		c.Close()
-		return nil, err
-	}
-	_ = c.SetWriteDeadline(time.Time{})
-	return c, nil
 }
 
 func TestListenPipeIntendedSIDRoundTrip(t *testing.T) {
@@ -107,14 +126,20 @@ func TestListenPipeIntendedSIDRoundTrip(t *testing.T) {
 func TestPipeDACLExclusiveAndProtected(t *testing.T) {
 	name := testPipeName(t)
 	sid := selfSID(t)
-	l, err := ListenPipe(name, sid, audit.Hooks{})
+	raw, err := winio.ListenPipe(localPipePrefix+name, &winio.PipeConfig{SecurityDescriptor: pipeSDDL(sid)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Close()
-	// Query the DACL through an open handle to the pipe instance rather
-	// than a named-object lookup. The client handle's GENERIC_READ includes
-	// READ_CONTROL.
+	// go-winio creates a connectable pipe instance only while Accept runs.
+	// The accepted server end stays open until after GetSecurityInfo.
+	finish := acceptAsync(t, raw)
+	defer func() {
+		raw.Close()
+		finish()
+	}()
+	// Query the kernel DACL through an open handle to the pipe instance
+	// rather than a named-object lookup. The client handle's GENERIC_READ
+	// includes READ_CONTROL.
 	c, err := rawDial(t, name)
 	if err != nil {
 		t.Fatal(err)
@@ -153,6 +178,52 @@ func TestPipeDACLExclusiveAndProtected(t *testing.T) {
 	}
 	if got := pipeSDDL(sid); got != "O:"+sid.String()+"D:P(A;;GA;;;"+sid.String()+")" {
 		t.Fatalf("sddl %q", got)
+	}
+}
+
+func TestListenPipeDeniesAnonymousClient(t *testing.T) {
+	name := testPipeName(t)
+	log := &recLog{}
+	l, err := ListenPipe(name, selfSID(t), audit.NewHooks(log))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	called := make(chan struct{}, 1)
+	go func() {
+		done <- l.Serve(ctx, func(context.Context, audit.ID, []byte) ([]byte, error) {
+			called <- struct{}{}
+			return []byte("x"), nil
+		})
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+	// go-winio's raw dial uses anonymous impersonation level: the preface is
+	// accepted but the client token cannot be opened.
+	c, err := rawDial(t, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	writeAsync(c, append([]byte{pipePreface}, frame([]byte("ping"))...))
+	_ = c.SetReadDeadline(time.Now().Add(10 * time.Second))
+	var b [1]byte
+	_, rerr := c.Read(b[:])
+	var ne net.Error
+	if rerr == nil || (errors.As(rerr, &ne) && ne.Timeout()) {
+		t.Fatalf("anonymous client read = %v, want closed connection", rerr)
+	}
+	select {
+	case <-called:
+		t.Fatal("handler ran for anonymous client")
+	default:
+	}
+	ev := log.snapshot()
+	if len(ev) != 1 || ev[0].Outcome != audit.OutcomeDenied || ev[0].ActorKind != audit.ActorUnknown {
+		t.Fatalf("audit = %+v", ev)
 	}
 }
 
@@ -195,8 +266,8 @@ func TestAuthorizeRejectsUnrelatedClientSID(t *testing.T) {
 
 func TestAuthorizeStableActor(t *testing.T) {
 	s := selfSID(t)
-	if sidActor(s) != sidActor(s) || sidActor(s).IsZero() {
-		t.Fatal("actor not stable")
+	if sidActor(s).IsZero() {
+		t.Fatal("zero actor")
 	}
 	if sidActor(s) == sidActor(otherSID(t, s)) {
 		t.Fatal("actor collision")

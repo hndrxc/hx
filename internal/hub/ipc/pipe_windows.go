@@ -3,6 +3,7 @@
 package ipc
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"regexp"
 	"runtime"
+	"time"
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
@@ -98,6 +100,87 @@ func processUserSID() (*windows.SID, error) {
 		return nil, err
 	}
 	return tu.User.Sid.Copy()
+}
+
+// DialPipe connects to the local administration pipe \\.\pipe\<name> as the
+// current process account and sends the transport preface.
+//
+// Security properties:
+//   - Only Identification impersonation is granted to the server: enough for
+//     ImpersonateNamedPipeClient + token user inspection, never enough to act
+//     as the client (go-winio's default would be Anonymous, which the server
+//     cannot inspect).
+//   - Before any byte is written, the connected pipe's owner SID (read from
+//     the connected handle, not by name) must equal this process user SID.
+//     ListenPipe always sets owner=sid=process user, so a pipe squatted by
+//     another account fails closed. The trusted boundary is the same SID;
+//     the DACL is not re-validated because only that account can own it.
+//   - The preface write is bounded by min(ctx deadline, connTimeout) and
+//     aborted on ctx cancellation.
+func DialPipe(ctx context.Context, name string) (net.Conn, error) {
+	if !pipeNamePattern.MatchString(name) {
+		return nil, fmt.Errorf("ipc: invalid pipe name %q", name)
+	}
+	self, err := processUserSID()
+	if err != nil {
+		return nil, fmt.Errorf("ipc: process token: %w", err)
+	}
+	c, err := winio.DialPipeAccessImpLevel(ctx, localPipePrefix+name,
+		windows.GENERIC_READ|windows.GENERIC_WRITE|windows.READ_CONTROL,
+		winio.PipeImpLevelIdentification)
+	if err != nil {
+		return nil, fmt.Errorf("ipc: dial pipe: %w", err)
+	}
+	if err := verifyPipeOwner(c, self); err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	if err := writePreface(ctx, c); err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	return c, nil
+}
+
+// verifyPipeOwner compares the owner SID of the connected pipe handle with want.
+func verifyPipeOwner(c net.Conn, want *windows.SID) error {
+	f, ok := c.(fdConn)
+	if !ok {
+		return errors.New("ipc: pipe handle unavailable")
+	}
+	sd, err := windows.GetSecurityInfo(windows.Handle(f.Fd()), windows.SE_KERNEL_OBJECT, windows.OWNER_SECURITY_INFORMATION)
+	if err != nil {
+		return errors.New("ipc: pipe owner unavailable")
+	}
+	owner, _, err := sd.Owner()
+	if err != nil || owner == nil || !owner.IsValid() || !windows.EqualSid(owner, want) {
+		return errors.New("ipc: pipe owner not authorized")
+	}
+	return nil
+}
+
+// writePreface sends pipePreface under a bounded, cancellable deadline and
+// clears the write deadline on success.
+func writePreface(ctx context.Context, c net.Conn) error {
+	deadline := time.Now().Add(connTimeout)
+	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
+		deadline = d
+	}
+	if err := c.SetWriteDeadline(deadline); err != nil {
+		return errors.New("ipc: pipe deadline")
+	}
+	stop := context.AfterFunc(ctx, func() { _ = c.SetWriteDeadline(time.Unix(1, 0)) })
+	_, err := c.Write([]byte{pipePreface})
+	if !stop() || ctx.Err() != nil {
+		return errors.New("ipc: pipe preface canceled")
+	}
+	if err != nil {
+		return errors.New("ipc: pipe preface write failed")
+	}
+	if err := c.SetWriteDeadline(time.Time{}); err != nil {
+		return errors.New("ipc: pipe deadline")
+	}
+	return nil
 }
 
 var procImpersonateNamedPipeClient = windows.NewLazySystemDLL("advapi32.dll").NewProc("ImpersonateNamedPipeClient")
