@@ -1,6 +1,6 @@
 # Audit Log
 
-**Status:** Implemented in `internal/hub/audit` by S03 ([#13](https://github.com/hndrxc/hx/issues/13)). There are no live callers yet; they arrive with the dependent issues. Retention, deletion and production off-host replication are not implemented and belong to O03 ([#51](https://github.com/hndrxc/hx/issues/51)). The writer is Linux-only.
+**Status:** Implemented in `internal/hub/audit` by S03 ([#13](https://github.com/hndrxc/hx/issues/13)); the vault and TLS trust store use its decision hooks. Retention, deletion and production off-host replication are not implemented and belong to O03 ([#51](https://github.com/hndrxc/hx/issues/51)). The writer is Linux-only.
 
 Threat context: A6 and T-TB7-R in the [threat model](threat-model.md).
 
@@ -12,7 +12,7 @@ Threat context: A6 and T-TB7-R in the [threat model](threat-model.md).
 | `ActorKind` | named string | `operator`, `client`, `integration`, `unknown` |
 | `ActorID` | 16-byte ID | Nonzero stable actor ID |
 | `IntegrationID` | 16-byte ID | Zero means not applicable |
-| `Action` | named string | `vault_unseal`, `secret_access`, `api_auth`, `client_enrollment`, `client_connection`, `tls_trust_approval`, `tls_trust_rotation`, `tls_trust_replacement`, `tls_pin_mismatch` |
+| `Action` | named string | `vault_unseal`, `secret_access`, `api_auth`, `client_enrollment`, `client_connection`, the [vault lifecycle actions](#vault-lifecycle-events-s02), and the [TLS trust actions](#tls-trust-events-s05) |
 | `Outcome` | named string | `allowed`, `denied`, `error` |
 | `CorrelationID` | 16-byte ID | Nonzero; ties records of one attempt together |
 
@@ -64,6 +64,7 @@ Hooks are typed, not free-form. `Hooks` is built with `NewHooks(log)`; a nil `*H
 type Meta struct { At time.Time; ActorKind ActorKind; ActorID, IntegrationID, CorrelationID ID }
 
 func (h *Hooks) VaultUnseal(m Meta, o Outcome) error
+func (h *Hooks) VaultLifecycle(a Action, m Meta, o Outcome) error
 func (h *Hooks) SecretAccess(m Meta, o Outcome) error
 func (h *Hooks) APIAuth(m Meta, o Outcome) error
 func (h *Hooks) ClientEnrollment(m Meta, o Outcome) error
@@ -74,11 +75,15 @@ func (h *Hooks) TLSTrustReplacement(m Meta, o Outcome) error
 func (h *Hooks) TLSPinMismatch(m Meta, o Outcome) error
 ```
 
-- `SecretAccess` requires a nonzero `IntegrationID`.
+- `SecretAccess`, `vault_secret_put`, and `vault_secret_delete` require a nonzero `IntegrationID`.
 - An `ActorUnknown` actor must not be recorded as `allowed`.
 - **Privileged successes** (unseal, secret access, enrollment, an allowed authentication or connection) are recorded **before** the grant takes effect. Grant only when the hook returns nil; if it fails, the operation fails closed.
 - **Denials and errors** stay denied if the audit write fails; an audit failure never turns a deny into an allow.
 - Audit write failures surface to telemetry as sanitized, fixed-category signals only: no event contents, IDs from untrusted input, paths or error text containing record data.
+
+### Vault lifecycle events (S02)
+
+`VaultLifecycle` accepts `vault_initialize`, `vault_rotate`, `vault_lock`, `vault_backup`, `vault_restore`, `vault_secret_put`, and `vault_secret_delete`. See [vault.md](vault.md) for ordering, including key erasure on lock even when its audit write fails. Frames retain the v1 shape and hash rules. A pre-S02 verifier will reject logs that contain these new actions; use an updated verifier.
 
 ### TLS trust events (S05)
 
