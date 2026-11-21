@@ -48,11 +48,15 @@ const (
 type Action string
 
 const (
-	ActionVaultUnseal      Action = "vault_unseal"
-	ActionSecretAccess     Action = "secret_access"
-	ActionAPIAuth          Action = "api_auth"
-	ActionClientEnrollment Action = "client_enrollment"
-	ActionClientConnection Action = "client_connection"
+	ActionVaultUnseal         Action = "vault_unseal"
+	ActionSecretAccess        Action = "secret_access"
+	ActionAPIAuth             Action = "api_auth"
+	ActionClientEnrollment    Action = "client_enrollment"
+	ActionClientConnection    Action = "client_connection"
+	ActionTLSTrustApproval    Action = "tls_trust_approval"
+	ActionTLSTrustRotation    Action = "tls_trust_rotation"
+	ActionTLSTrustReplacement Action = "tls_trust_replacement"
+	ActionTLSPinMismatch      Action = "tls_pin_mismatch"
 )
 
 // Outcome is the result of the audited operation.
@@ -102,7 +106,8 @@ func (e Event) validate() error {
 		return ErrInvalidEvent
 	}
 	switch e.Action {
-	case ActionVaultUnseal, ActionSecretAccess, ActionAPIAuth, ActionClientEnrollment, ActionClientConnection:
+	case ActionVaultUnseal, ActionSecretAccess, ActionAPIAuth, ActionClientEnrollment, ActionClientConnection,
+		ActionTLSTrustApproval, ActionTLSTrustRotation, ActionTLSTrustReplacement, ActionTLSPinMismatch:
 	default:
 		return ErrInvalidEvent
 	}
@@ -260,4 +265,24 @@ func (h *Hooks) ClientEnrollment(m Meta, o Outcome) error {
 // ClientConnection records a client connection decision.
 func (h *Hooks) ClientConnection(m Meta, o Outcome) error {
 	return h.record(ActionClientConnection, m, o)
+}
+
+// TLSTrustApproval records a TLS trust approval decision.
+func (h *Hooks) TLSTrustApproval(m Meta, o Outcome) error {
+	return h.record(ActionTLSTrustApproval, m, o)
+}
+
+// TLSTrustRotation records a TLS trust rotation decision.
+func (h *Hooks) TLSTrustRotation(m Meta, o Outcome) error {
+	return h.record(ActionTLSTrustRotation, m, o)
+}
+
+// TLSTrustReplacement records a TLS trust replacement (promotion) decision.
+func (h *Hooks) TLSTrustReplacement(m Meta, o Outcome) error {
+	return h.record(ActionTLSTrustReplacement, m, o)
+}
+
+// TLSPinMismatch records a TLS pin mismatch; IntegrationID is the actor.
+func (h *Hooks) TLSPinMismatch(m Meta, o Outcome) error {
+	return h.record(ActionTLSPinMismatch, m, o)
 }
