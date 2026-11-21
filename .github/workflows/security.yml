@@ -1,0 +1,156 @@
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GOTOOLCHAIN: local
+  GOFLAGS: -mod=readonly
+  SEMGREP_IMAGE: semgrep/semgrep:1.186.0@sha256:6e1b04340e60e910fbb4ddbf3c857ab0918f064417ad5ac530014ccb3cf8c8f1
+
+jobs:
+  security-go:
+    name: security-go
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go (security patch release)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.4"
+          cache: false
+      - name: Install scanners
+        env:
+          GOBIN: ${{ runner.temp }}/security-bin
+        run: bash scripts/security.sh install
+      - name: Run Go security scans
+        env:
+          GOBIN: ${{ runner.temp }}/security-bin
+        run: |
+          export PATH="$GOBIN:$PATH"
+          bash scripts/security.sh go
+
+  security-policy:
+    name: security-policy
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pull pinned Semgrep image
+        run: docker pull "$SEMGREP_IMAGE"
+      - name: Semgrep rule tests
+        run: |
+          # Semgrep 1.186.0 crashes `--test` for config file + target
+          # directory; test each exact fixture file against the config.
+          for fixture in collector.go logging.go render.tsx tls.go; do
+            docker run --rm --network none --read-only \
+              --tmpfs /tmp --user "$(id -u):$(id -g)" \
+              -e HOME=/tmp -e SEMGREP_SEND_METRICS=off \
+              -e SEMGREP_ENABLE_VERSION_CHECK=0 \
+              -v "$GITHUB_WORKSPACE:/src:ro" -w /src \
+              "$SEMGREP_IMAGE" \
+              semgrep scan --test --strict --metrics=off --disable-version-check \
+                --config .semgrep.yml "security/testdata/$fixture"
+          done
+      - name: Semgrep scan
+        run: |
+          docker run --rm --network none --read-only \
+            --tmpfs /tmp --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e SEMGREP_SEND_METRICS=off \
+            -e SEMGREP_ENABLE_VERSION_CHECK=0 \
+            -v "$GITHUB_WORKSPACE:/src:ro" -w /src \
+            "$SEMGREP_IMAGE" \
+            semgrep scan --strict --error --disable-nosem \
+              --metrics=off --disable-version-check \
+              --no-git-ignore --config .semgrep.yml --exclude security/testdata .
+
+  fuzz-smoke:
+    name: fuzz-smoke
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go (security patch release)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.4"
+          cache: false
+      - name: Fuzz smoke
+        run: bash scripts/security.sh fuzz-smoke
+
+  fuzz-long:
+    name: fuzz-long
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Set up Go (security patch release)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.4"
+          cache: false
+      - name: Fuzz long
+        run: bash scripts/security.sh fuzz-long
+
+  dependency-config:
+    name: dependency-config
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node for Renovate validation
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
+          package-manager-cache: false
+      - name: Validate Renovate configuration
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-cache
+        run: |
+          npx --yes --package=renovate@44.257.5 renovate-config-validator --strict

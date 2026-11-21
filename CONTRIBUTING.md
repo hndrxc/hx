@@ -67,6 +67,18 @@ bash scripts/check.sh all
 
 For detailed specifications on each check and CI environment variables, see [docs/ci.md](docs/ci.md).
 
+### Security gates
+
+Security checks (`security-go`, `security-policy`, `fuzz-smoke`, `dependency-config`; `fuzz-long` runs only on schedule or manual dispatch) are driven by `scripts/security.sh` (`install`, `go`, `fuzz-smoke`, `fuzz-long`):
+
+```bash
+bash scripts/security.sh install
+bash scripts/security.sh go
+bash scripts/security.sh fuzz-smoke
+```
+
+Semgrep inline suppressions (`nosemgrep`) are disabled and broad exclusions are not accepted; fix the finding or propose a narrowly scoped, security-reviewed rule change. The only gosec exception is F04-001 (`G304` in `cmd/hx/audit.go`, expires 2027-02-20). Tool pins, the patched Go 1.27.4 scan toolchain and fixture/probe commands are in [docs/security/ci-gates.md](docs/security/ci-gates.md); pin updates follow the [dependency update policy](docs/security/dependency-updates.md).
+
 ---
 
 ## 4. Pull Request Requirements

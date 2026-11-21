@@ -1,0 +1,105 @@
+# Semgrep policy rules. Pinned scanner and invocation live in scripts/security.sh.
+# These rules must not be suppressed: run with --disable-nosem; no nosem/semgrep-ignore comments.
+rules:
+  - id: hx-go-insecure-skip-verify
+    languages: [go]
+    severity: ERROR
+    message: >-
+      tls.Config.InsecureSkipVerify must never be set or assigned, including when the
+      value is false. Verify certificates with a configured root pool or custom VerifyConnection.
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+    pattern-either:
+      - pattern: |
+          tls.Config{..., InsecureSkipVerify: $X, ...}
+      - pattern: $OBJ.InsecureSkipVerify = $X
+
+  - id: hx-go-secret-use-plaintext-log
+    languages: [go]
+    severity: ERROR
+    mode: taint
+    message: >-
+      Plaintext received by a secret Use callback flows into a log, print, or error sink. Log only
+      metadata (length, scope) or an explicit redacted wrapper.
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $H.Use(func($P []byte) $R { ... })
+              - pattern-inside: |
+                  $H.Use($CTX, $SCOPE, func($P []byte) $R { ... })
+          - focus-metavariable: $P
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: log.$F(...)
+              - pattern: slog.$F(...)
+              - pattern: $L.$F(...)
+              - pattern: fmt.$F(...)
+          - metavariable-regex:
+              metavariable: $F
+              regex: ^(Print|Printf|Println|Fatal|Fatalf|Fatalln|Panic|Panicf|Panicln|Fprint|Fprintf|Fprintln|Errorf|Debug|Debugf|DebugContext|Info|Infof|InfoContext|Warn|Warnf|WarnContext|Error|ErrorContext|Log|LogAttrs)$
+      - pattern: errors.New(...)
+    pattern-sanitizers:
+      - pattern: len(...)
+      - pattern: cap(...)
+      - pattern: redact(...)
+
+  - id: hx-js-active-html-sink
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Active HTML sink in client code. Render text via textContent or framework escaping; never
+      inject markup.
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+    pattern-either:
+      - pattern: <$E dangerouslySetInnerHTML=... />
+      - pattern: <$E dangerouslySetInnerHTML=...>...</$E>
+      - pattern: |
+          {dangerouslySetInnerHTML: ...}
+      - pattern: $E.innerHTML = $V
+      - pattern: $E.innerHTML += $V
+      - pattern: $E.outerHTML = $V
+      - pattern: $E.insertAdjacentHTML(...)
+      - pattern: $E.createContextualFragment(...)
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+      - pattern: $E.srcdoc = $V
+
+  - id: hx-go-template-trust-cast
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Conversion to a html/template trusted type (template.HTML, JS, URL, ...) disables
+      escaping. Pass plain strings and let the template escape them.
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+    patterns:
+      - pattern: template.$T(...)
+      - metavariable-regex:
+          metavariable: $T
+          regex: ^(HTML|HTMLAttr|JS|JSStr|CSS|URL|Srcset)$
+
+  - id: hx-go-direct-network-import
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Direct networking imports (net, net/http, websocket libraries) are forbidden in
+      integrations and collector code. Use the approved egress adapter instead; plain data
+      packages such as net/url and net/netip are allowed.
+    metadata:
+      category: security
+    paths:
+      include:
+        - /internal/integrations/
+        - /internal/collector/
+        - /security/testdata/collector.go
+    pattern-regex: |-
+      (?m)(?:^|;)[ \t]*(?:import[ \t]*\([ \t]*|import[ \t]+)?(?:[A-Za-z_.]\w*[ \t]+)?(?:"(?:net|net/http(?:/[\w/]+)?|net/rpc(?:/[\w/]+)?|net/smtp|golang\.org/x/net/(?:websocket|http2|proxy)|github\.com/gorilla/websocket|github\.com/gobwas/ws(?:/[\w/]+)?|github\.com/coder/websocket|nhooyr\.io/websocket|github\.com/fasthttp/websocket|github\.com/lxzan/gws|github\.com/olahol/melody|github\.com/sacOO7/gowebsocket)"|`(?:net|net/http(?:/[\w/]+)?|net/rpc(?:/[\w/]+)?|net/smtp|golang\.org/x/net/(?:websocket|http2|proxy)|github\.com/gorilla/websocket|github\.com/gobwas/ws(?:/[\w/]+)?|github\.com/coder/websocket|nhooyr\.io/websocket|github\.com/fasthttp/websocket|github\.com/lxzan/gws|github\.com/olahol/melody|github\.com/sacOO7/gowebsocket)`)

@@ -16,19 +16,19 @@ import (
 type dirBackend struct {
 	root *os.Root
 	dir  *os.File
-	uid  uint32
+	uid  int
 }
 
 func openBackend(dir string) (backend, error) {
 	if dir == "" {
 		return nil, ErrStore
 	}
-	uid := uint32(os.Geteuid())
+	uid := os.Geteuid()
 	li, err := os.Lstat(dir)
 	if err != nil || !li.IsDir() || li.Mode().Perm() != 0o700 || li.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 {
 		return nil, ErrStore
 	}
-	if st, ok := li.Sys().(*syscall.Stat_t); !ok || st.Uid != uid {
+	if st, ok := li.Sys().(*syscall.Stat_t); !ok || int(st.Uid) != uid {
 		return nil, ErrStore
 	}
 	root, err := os.OpenRoot(dir)
@@ -37,12 +37,12 @@ func openBackend(dir string) (backend, error) {
 	}
 	df, err := root.Open(".")
 	if err != nil {
-		root.Close()
+		_ = root.Close()
 		return nil, ErrStore
 	}
 	fail := func() (backend, error) {
-		df.Close()
-		root.Close()
+		_ = df.Close()
+		_ = root.Close()
 		return nil, ErrStore
 	}
 	fi, err := df.Stat()
@@ -68,7 +68,7 @@ func (b *dirBackend) read(name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (b *dirBackend) read(name string) ([]byte, error) {
 	st, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok || !fi.Mode().IsRegular() || fi.Mode().Perm() != 0o600 ||
 		fi.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 ||
-		st.Uid != b.uid || st.Nlink != 1 || fi.Size() > maxRecordSize {
+		int(st.Uid) != b.uid || st.Nlink != 1 || fi.Size() > maxRecordSize {
 		return nil, errors.New("tlstrust: unsafe record file")
 	}
 	data, err := io.ReadAll(io.LimitReader(f, maxRecordSize+1))
@@ -99,8 +99,8 @@ func (b *dirBackend) write(name string, data []byte) error {
 		return err
 	}
 	abort := func(err error) error {
-		f.Close()
-		b.root.Remove(tmp)
+		_ = f.Close()
+		_ = b.root.Remove(tmp)
 		return err
 	}
 	if err := f.Chmod(0o600); err != nil {
@@ -113,7 +113,7 @@ func (b *dirBackend) write(name string, data []byte) error {
 		return abort(err)
 	}
 	if err := f.Close(); err != nil {
-		b.root.Remove(tmp)
+		_ = b.root.Remove(tmp)
 		return err
 	}
 	if err := b.root.Rename(tmp, name); err != nil {
