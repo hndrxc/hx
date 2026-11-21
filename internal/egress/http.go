@@ -244,14 +244,14 @@ func (p *Policy) Do(req *http.Request) (*http.Response, error) {
 	}
 	if !validRequest(req) || httptrace.ContextClientTrace(req.Context()) != nil {
 		if req != nil && req.Body != nil {
-			req.Body.Close()
+			_ = req.Body.Close()
 		}
 		return nil, ErrDenied
 	}
 	origin, err := p.authorize(req.URL)
 	if err != nil {
 		if req.Body != nil {
-			req.Body.Close()
+			_ = req.Body.Close()
 		}
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func (p *Policy) Do(req *http.Request) (*http.Response, error) {
 			return nil, mapped
 		}
 		if resp.StatusCode == http.StatusSwitchingProtocols {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			cancel()
 			return nil, ErrDenied
 		}
@@ -290,7 +290,7 @@ func (p *Policy) Do(req *http.Request) (*http.Response, error) {
 		}
 
 		next, err := cur.URL.Parse(resp.Header.Get("Location"))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			cancel()
 			return nil, ErrResponse
@@ -347,7 +347,7 @@ func bodyless(method string, status int) bool {
 func (p *Policy) wrapResponse(ctx context.Context, cancel context.CancelFunc, resp *http.Response, method string) (*http.Response, error) {
 	max := p.limits.MaxBodyBytes
 	if resp.ContentLength > max && !bodyless(method, resp.StatusCode) {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		cancel()
 		return nil, ErrTooLarge
 	}
@@ -425,7 +425,7 @@ func (b *limitedBody) afterRead(err error) error {
 
 func (b *limitedBody) finish() {
 	b.once.Do(func() {
-		b.rc.Close()
+		_ = b.rc.Close()
 		b.cancel()
 	})
 }

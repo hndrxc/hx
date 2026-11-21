@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -346,7 +347,7 @@ func recordName(o Origin) string {
 	h.Write([]byte{0})
 	h.Write([]byte(o.Host))
 	h.Write([]byte{0})
-	h.Write([]byte{byte(o.Port >> 8), byte(o.Port)})
+	h.Write(binary.BigEndian.AppendUint16(nil, o.Port))
 	return hex.EncodeToString(h.Sum(nil)) + recordSuffix
 }
 
