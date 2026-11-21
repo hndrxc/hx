@@ -57,7 +57,26 @@ const (
 	ActionTLSTrustRotation    Action = "tls_trust_rotation"
 	ActionTLSTrustReplacement Action = "tls_trust_replacement"
 	ActionTLSPinMismatch      Action = "tls_pin_mismatch"
+
+	// Vault lifecycle actions, recorded through Hooks.VaultLifecycle.
+	ActionVaultInitialize   Action = "vault_initialize"
+	ActionVaultRotate       Action = "vault_rotate"
+	ActionVaultLock         Action = "vault_lock"
+	ActionVaultBackup       Action = "vault_backup"
+	ActionVaultRestore      Action = "vault_restore"
+	ActionVaultSecretPut    Action = "vault_secret_put"
+	ActionVaultSecretDelete Action = "vault_secret_delete"
 )
+
+// vaultLifecycle reports whether a is a vault lifecycle action.
+func vaultLifecycle(a Action) bool {
+	switch a {
+	case ActionVaultInitialize, ActionVaultRotate, ActionVaultLock, ActionVaultBackup,
+		ActionVaultRestore, ActionVaultSecretPut, ActionVaultSecretDelete:
+		return true
+	}
+	return false
+}
 
 // Outcome is the result of the audited operation.
 type Outcome string
@@ -109,7 +128,9 @@ func (e Event) validate() error {
 	case ActionVaultUnseal, ActionSecretAccess, ActionAPIAuth, ActionClientEnrollment, ActionClientConnection,
 		ActionTLSTrustApproval, ActionTLSTrustRotation, ActionTLSTrustReplacement, ActionTLSPinMismatch:
 	default:
-		return ErrInvalidEvent
+		if !vaultLifecycle(e.Action) {
+			return ErrInvalidEvent
+		}
 	}
 	switch e.Outcome {
 	case OutcomeAllowed, OutcomeDenied, OutcomeError:
@@ -122,7 +143,8 @@ func (e Event) validate() error {
 	if e.ActorKind == ActorUnknown && e.Outcome == OutcomeAllowed {
 		return ErrInvalidEvent
 	}
-	if e.Action == ActionSecretAccess && e.IntegrationID.IsZero() {
+	if (e.Action == ActionSecretAccess || e.Action == ActionVaultSecretPut || e.Action == ActionVaultSecretDelete) &&
+		e.IntegrationID.IsZero() {
 		return ErrInvalidEvent
 	}
 	return nil
@@ -250,6 +272,15 @@ func (h *Hooks) record(a Action, m Meta, o Outcome) error {
 
 // VaultUnseal records a vault unseal decision.
 func (h *Hooks) VaultUnseal(m Meta, o Outcome) error { return h.record(ActionVaultUnseal, m, o) }
+
+// VaultLifecycle records a vault lifecycle decision. a must be one of the
+// ActionVault* lifecycle actions; secret put/delete require IntegrationID.
+func (h *Hooks) VaultLifecycle(a Action, m Meta, o Outcome) error {
+	if !vaultLifecycle(a) {
+		return ErrInvalidEvent
+	}
+	return h.record(a, m, o)
+}
 
 // SecretAccess records a secret access decision; IntegrationID is required.
 func (h *Hooks) SecretAccess(m Meta, o Outcome) error { return h.record(ActionSecretAccess, m, o) }
