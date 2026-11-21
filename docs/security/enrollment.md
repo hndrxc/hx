@@ -105,5 +105,6 @@ root rotation or re-enrollment.
 
 ## Limits
 
-No live network, transport, or provider access; no storage backends shipped;
-no automatic rollback recovery; no production deployment.
+No live network or provider access; transport is listener scaffolding only
+([hub-transport.md](hub-transport.md)) with no live tailnet join; no storage
+backends shipped; no automatic rollback recovery; no production deployment.

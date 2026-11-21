@@ -10,10 +10,8 @@ This guide documents the toolchain, build commands, version embedding, build tag
 
 The repository uses standard Go toolchain mechanics for local compilation, with continuous integration verification automated via `scripts/check.sh` and GitHub Actions (see [CI & Ruleset Configuration](ci.md)):
 
-- **Go Toolchain:** Go `1.27.3` (`go 1.27.3` in `go.mod`).
-- **Direct Runtime Dependency:** `github.com/spf13/cobra v1.10.2` (and transitive dependencies including `github.com/spf13/pflag v1.0.9` and `github.com/inconshreveable/mousetrap v1.1.0` locked in `go.mod` / `go.sum`).
-- **Minimal Graph Policy:** In accordance with the F02 bootstrap design, optional and future dependencies (Charm v2, ConnectRPC v2, Protobuf, modernc SQLite, tsnet, Wails v3) are **not** present in `go.mod`.
-- **Security Requirement on Tailnet Import:** A security floor of `github.com/klauspost/compress >= v1.20.3` is required to mitigate `GO-2026-6865`. Rather than pinning an unused direct dependency in F02, this pin must be added when `tailscale.com` (`tsnet`) is first imported into the module graph.
+- **Go Toolchain:** Go `1.27.4` minimum, as declared in `go.mod`.
+- **Dependency graph:** Direct and indirect pins are recorded in `go.mod` and checked against `go.sum`. See the [compatibility matrix](compatibility.md) for transport dependencies and the patched compression/networking floors. Optional TUI, SQLite, and desktop dependencies are not present.
 - **No Empty Stub Packages:** Packages for domain, hub, store, api, egress, or providers are not created as empty placeholders; they land in their owning feature issues.
 
 ---

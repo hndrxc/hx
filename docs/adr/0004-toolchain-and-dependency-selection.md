@@ -17,7 +17,7 @@ We adopt the following dependency selection policy:
 
 ### Selected Toolchain & Dependencies
 
-- **Go Toolchain**: Current stable major Go toolchain (go1.27.x). The repository `go.mod` will declare `go 1.27.3` because `tailscale.com` requires it in its module directive, which sets the minimum floor for the entire module. Patch updates follow official Go security and maintenance releases.
+- **Go Toolchain**: Current stable major Go toolchain (go1.27.x). The repository `go.mod` declares the Go directive required by `tailscale.com` in its module directive, which sets the minimum floor for the entire module (originally `go 1.27.3`; currently `go 1.27.4` with `tailscale.com@v1.104.7` per [S08 (#19)](https://github.com/hndrxc/hx/issues/19); the living value is in `go.mod` and [docs/compatibility.md](../compatibility.md)). Patch updates follow official Go security and maintenance releases.
 - **CLI Framework**: `github.com/spf13/cobra`. Industry-standard CLI command routing, POSIX flag parsing, subcommand composition, and shell autocompletion.
 - **TUI Framework**: Charm v2 libraries via modern canonical import paths `charm.land/bubbletea/v2`, `charm.land/lipgloss/v2`, and `charm.land/bubbles/v2` (not legacy `github.com/charmbracelet/...` paths). Bubble Tea v2 provides Elm-architecture terminal state management, Lip Gloss v2 handles declarative terminal styling, and Bubbles v2 supplies reusable interactive components.
 - **RPC & Protocol Buffers**: `connectrpc.com/connect/v2` paired with `google.golang.org/protobuf`. Code generation is standardized on `buf` (`github.com/bufbuild/buf`) with `protoc-gen-go` and `protoc-gen-connect-go` at matching version lines (generation layout owned by [D01 (#22)](https://github.com/hndrxc/hx/issues/22)). ConnectRPC v2 eliminates legacy request/response wrapper overhead (`connect.Request[T]`/`connect.Response[T]`), provides native HTTP/2 and gRPC wire compatibility, and simplifies handler signatures. Adopting v2 greenfield avoids future v1-to-v2 migration breaking changes.
@@ -33,7 +33,7 @@ We adopt the following dependency selection policy:
 - **Legacy Charm Import Paths (`github.com/charmbracelet/...`)**: Rejected in favor of official `charm.land/...` v2 paths, ensuring long-term compatibility with upstream Charm developments and modular v2 architecture.
 ## Consequences
 - Greenfield code builds against modern APIs (`connect/v2`, Charm v2, Wails v3).
-- `go 1.27.3` directive requirement strictly mandates go1.27.x toolchain availability across development workstations and CI runners.
+- The tsnet-mandated Go directive (currently `go 1.27.4`) strictly mandates go1.27.x toolchain availability across development workstations and CI runners.
 - Hub and agent binaries compile with `CGO_ENABLED=0`, enabling reliable cross-compilation across Linux (amd64, arm64) and Windows (amd64).
 - Desktop builds require platform-specific CGO toolchains and native GUI development libraries on Linux (GTK4 and WebKitGTK 6.0).
 
