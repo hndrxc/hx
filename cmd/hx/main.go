@@ -71,6 +71,7 @@ func newRootCommand(out, errOut io.Writer) *cobra.Command {
 	// Register subcommands.
 	rootCmd.AddCommand(newHubCommand(out, errOut))
 	rootCmd.AddCommand(cli.NewTUICommand(out, errOut))
+	rootCmd.AddCommand(newAuditCommand(out, errOut))
 
 	return rootCmd
 }
