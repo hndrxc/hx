@@ -14,6 +14,7 @@ type Destination struct {
     Host       string
     Port       uint16
     PrivateIPs []netip.Addr // exact homelab bindings (section 4)
+    Trust      *tlstrust.Binding // optional exact-origin private TLS trust
 }
 
 type Limits struct {
@@ -76,6 +77,8 @@ Listing `10.42.0.10` for `nas.lab.example.test` does not authorize `10.42.0.11`,
 
 Errors from `Do` and from establishing a `Dial` are the sentinels `ErrDenied`, `ErrResolve`, `ErrConnect`, `ErrResponse`, and `ErrTooLarge` (plus direct context errors). They are fixed-text: they do **not** contain hostnames, IP addresses, ports, URLs, resolver output, or wrapped raw causes, so they are safe to hand to audit sinks. Callers must test with `errors.Is`.
 
+TLS certificate verification failures use `ErrCertificate` (also matches `ErrConnect`); private [trust](tls-trust.md) adds fixed approval, store, audit and pin mismatch categories.
+
 Stream I/O on a conn returned by `Dial` is distinct from the primary sentinels. Its errors are redacted to a fixed canonical set: `io.EOF`, `io.ErrUnexpectedEOF`, `os.ErrDeadlineExceeded` (deadline or lifetime expiry), and `net.ErrClosed` (closed socket). Any other I/O failure is reported as `ErrConnect`. All of these are safe to log by category.
 
 Caller rules:
@@ -91,7 +94,7 @@ Caller rules:
 | :--- | :--- | :--- |
 | WebSocket upgrade, framing, message limits, collection helper limits | [#25](https://github.com/hndrxc/hx/issues/25) | `Dial` returns an authorized raw connection only; it performs no upgrade and enforces no message limits. |
 | Public TLS trust | this policy | Standard verified TLS; no verification bypass. |
-| Private roots, pinning, private-CA TLS | [#16 (S05)](https://github.com/hndrxc/hx/issues/16), [ADR-0006](../adr/0006-private-tls-trust-without-verification-bypass.md) | Not provided here; private destinations still use standard verification until #16 lands. |
+| Private roots, pinning, private-CA TLS | [#16 (S05)](https://github.com/hndrxc/hx/issues/16), [ADR-0006](../adr/0006-private-tls-trust-without-verification-bypass.md) | `Destination.Trust` applies one [approved binding](tls-trust.md) to the exact HTTPS, WSS or TLS origin. Missing or invalid approved state fails closed; nil explicitly selects system trust. |
 | Operational vs bootstrap egress | [ADR-0007](../adr/0007-tailnet-transport-and-bootstrap-egress.md) | tsnet bootstrap is **not** governed by this collector policy; it is isolated separately by host controls per ADR-0007. Distinct operational allowlists must never augment collector scopes: do not add operational or bootstrap destinations to a collector `Policy`, and use separate `Policy` values for separate paths. |
 | Cooperative vs enforced controls | [ADR-0003](../adr/0003-in-process-collector-trust-boundary.md) | See section 7. |
 
@@ -100,7 +103,7 @@ Caller rules:
 - **Cooperative control only.** The policy binds code that calls it. In-process code can use `net` or `net/http` directly; this is not a firewall or sandbox (ADR-0003). OS firewall rules, network namespaces, or process sandboxing are needed for enforcement and are out of scope.
 - No runtime currently routes traffic through it; no guarantee exists for any shipped command.
 - DNS answers are resolved by the policy at dial time; the exact-binding check applies to those answers. It does not defend a compromised host resolver for public destinations beyond TLS verification.
-- No TLS pinning, private roots, or WebSocket handling (section 6).
+- WebSocket upgrade, framing and message limits are outside this policy.
 - Allowlist is fixed at `New`; there is no dynamic reload.
 
 ## 8. Rollback

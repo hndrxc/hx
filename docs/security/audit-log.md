@@ -12,11 +12,11 @@ Threat context: A6 and T-TB7-R in the [threat model](threat-model.md).
 | `ActorKind` | named string | `operator`, `client`, `integration`, `unknown` |
 | `ActorID` | 16-byte ID | Nonzero stable actor ID |
 | `IntegrationID` | 16-byte ID | Zero means not applicable |
-| `Action` | named string | `vault_unseal`, `secret_access`, `api_auth`, `client_enrollment`, `client_connection` |
+| `Action` | named string | `vault_unseal`, `secret_access`, `api_auth`, `client_enrollment`, `client_connection`, `tls_trust_approval`, `tls_trust_rotation`, `tls_trust_replacement`, `tls_pin_mismatch` |
 | `Outcome` | named string | `allowed`, `denied`, `error` |
 | `CorrelationID` | 16-byte ID | Nonzero; ties records of one attempt together |
 
-Go names: `ActorOperator`, `ActorClient`, `ActorIntegration`, `ActorUnknown`; `ActionVaultUnseal`, `ActionSecretAccess`, `ActionAPIAuth`, `ActionClientEnrollment`, `ActionClientConnection`; `OutcomeAllowed`, `OutcomeDenied`, `OutcomeError`.
+Go names: `ActorOperator`, `ActorClient`, `ActorIntegration`, `ActorUnknown`; `ActionVaultUnseal`, `ActionSecretAccess`, `ActionAPIAuth`, `ActionClientEnrollment`, `ActionClientConnection`, `ActionTLSTrustApproval`, `ActionTLSTrustRotation`, `ActionTLSTrustReplacement`, `ActionTLSPinMismatch`; `OutcomeAllowed`, `OutcomeDenied`, `OutcomeError`.
 
 ### Identifiers
 
@@ -68,6 +68,10 @@ func (h *Hooks) SecretAccess(m Meta, o Outcome) error
 func (h *Hooks) APIAuth(m Meta, o Outcome) error
 func (h *Hooks) ClientEnrollment(m Meta, o Outcome) error
 func (h *Hooks) ClientConnection(m Meta, o Outcome) error
+func (h *Hooks) TLSTrustApproval(m Meta, o Outcome) error
+func (h *Hooks) TLSTrustRotation(m Meta, o Outcome) error
+func (h *Hooks) TLSTrustReplacement(m Meta, o Outcome) error
+func (h *Hooks) TLSPinMismatch(m Meta, o Outcome) error
 ```
 
 - `SecretAccess` requires a nonzero `IntegrationID`.
@@ -75,6 +79,14 @@ func (h *Hooks) ClientConnection(m Meta, o Outcome) error
 - **Privileged successes** (unseal, secret access, enrollment, an allowed authentication or connection) are recorded **before** the grant takes effect. Grant only when the hook returns nil; if it fails, the operation fails closed.
 - **Denials and errors** stay denied if the audit write fails; an audit failure never turns a deny into an allow.
 - Audit write failures surface to telemetry as sanitized, fixed-category signals only: no event contents, IDs from untrusted input, paths or error text containing record data.
+
+### TLS trust events (S05)
+
+S05 ([#16](https://github.com/hndrxc/hx/issues/16)) adds four typed actions for the TLS trust store: approval, rotation (staging a successor), replacement (promoting the staged record) and pin mismatch. See [tls-trust.md](tls-trust.md) for the store semantics.
+
+- **Audit-first authorization.** The trust store records an approval, rotation or replacement before it publishes the change. It proceeds only when the hook returns nil. An `allowed` outcome proves authorization was recorded, not that the filesystem publication succeeded: a recorded approval may never take effect (for example the store write fails afterwards). Treat the store state, not the audit record, as the source of truth for what is trusted.
+- A pin mismatch is a denial; an audit failure never turns it into an allow.
+- **Wire compatibility.** The frame shape, key order, version and hash rules are unchanged; only new `action` values appear. A verifier built before S05 validates `action` strictly and rejects the new values, so a log containing TLS trust events fails verification there. Keep an updated verifier for any log that contains TLS events, and do not verify such logs with an older binary.
 
 ### Durability and sync protocol
 

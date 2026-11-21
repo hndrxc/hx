@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hndrxc/hx/internal/egress/tlstrust"
 )
 
 // Sentinel errors. Callers match with errors.Is; none carry origin details.
@@ -42,12 +44,16 @@ var resolver = &net.Resolver{PreferGo: true, StrictErrors: true}
 
 // Destination is one allowed origin. Port 0 selects the default for
 // http/https/ws/wss; tcp and tls require an explicit port. PrivateIPs lists
-// exact RFC1918, ULA or CGNAT addresses the host may resolve to.
+// exact RFC1918, ULA or CGNAT addresses the host may resolve to. Trust, when
+// non-nil, supplies the store-approved TLS trust for a secure scheme
+// (https, wss, tls) and must be bound to exactly this origin; nil selects
+// standard chain, name and validity verification.
 type Destination struct {
 	Scheme     string
 	Host       string
 	Port       uint16
 	PrivateIPs []netip.Addr
+	Trust      *tlstrust.Binding
 }
 
 // Limits bound a single exchange.
@@ -69,6 +75,7 @@ type Policy struct {
 	httpClient http.Client
 
 	allowed map[target]map[netip.Addr]struct{}
+	trust   map[target]*tlstrust.Binding
 }
 
 // New validates the destinations and limits and returns a Policy.
@@ -86,6 +93,7 @@ func New(destinations []Destination, limits Limits) (*Policy, error) {
 		return nil, errors.New("egress: too many destinations")
 	}
 	allowed := make(map[target]map[netip.Addr]struct{}, len(destinations))
+	var trust map[target]*tlstrust.Binding
 	for i := range destinations {
 		d := destinations[i]
 		scheme := d.Scheme
@@ -136,10 +144,25 @@ func New(destinations []Destination, limits Limits) (*Policy, error) {
 			priv[ip] = struct{}{}
 		}
 		allowed[t] = priv
+		if d.Trust != nil {
+			switch scheme {
+			case "https", "wss", "tls":
+			default:
+				return nil, errors.New("egress: trust requires a secure scheme")
+			}
+			if !d.Trust.Matches(tlstrust.Origin{Scheme: scheme, Host: canon, Port: port}) {
+				return nil, errors.New("egress: trust bound to a different origin")
+			}
+			if trust == nil {
+				trust = make(map[target]*tlstrust.Binding)
+			}
+			trust[t] = d.Trust
+		}
 	}
 	p := &Policy{
 		limits:  limits,
 		allowed: allowed,
+		trust:   trust,
 		lookupIP: func(ctx context.Context, host string) ([]netip.Addr, error) {
 			// Absolute name: never expand through resolver search domains.
 			return resolver.LookupNetIP(ctx, "ip", host+".")

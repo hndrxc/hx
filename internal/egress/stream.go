@@ -10,6 +10,8 @@ import (
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/hndrxc/hx/internal/egress/tlstrust"
 )
 
 // Dial opens a raw stream to an allowed ws, wss, tcp or tls origin.
@@ -67,15 +69,10 @@ func (p *Policy) Dial(ctx context.Context, u *url.URL) (net.Conn, error) {
 		return nil, streamErr(ctx, err)
 	}
 	if secure {
-		tc := tls.Client(conn, &tls.Config{ServerName: t.host, MinVersion: tls.VersionTLS12})
-		if err := tc.HandshakeContext(ctx); err != nil {
-			_ = conn.Close()
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			return nil, ErrConnect
+		conn, err = p.handshakeTLS(ctx, t, conn)
+		if err != nil {
+			return nil, err
 		}
-		conn = tc
 	}
 	if err := conn.SetDeadline(lifetime); err != nil {
 		_ = conn.Close()
@@ -84,6 +81,72 @@ func (p *Policy) Dial(ctx context.Context, u *url.URL) (net.Conn, error) {
 	s := &streamConn{conn: conn, lifetime: lifetime}
 	s.timer = time.AfterFunc(time.Until(lifetime), func() { _ = conn.Close() })
 	return s, nil
+}
+
+// ErrCertificate reports that standard certificate verification failed. It is
+// a fixed value; errors.Is(ErrCertificate, ErrConnect) also holds.
+var ErrCertificate error = certError{}
+
+type certError struct{}
+
+func (certError) Error() string        { return "egress: certificate verification failed" }
+func (certError) Is(target error) bool { return target == ErrConnect }
+
+// handshakeTLS runs the client handshake over the already-vetted conn. The
+// configuration comes only from the destination's store binding, or is the
+// standard default verifying chain, host/IP identity and validity at TLS 1.2
+// or later. conn is closed on failure; the returned error is a fixed value.
+func (p *Policy) handshakeTLS(ctx context.Context, t target, conn net.Conn) (net.Conn, error) {
+	var cfg *tls.Config
+	b := p.trust[t]
+	if b != nil {
+		c, err := b.TLSConfig()
+		if err != nil || c == nil {
+			_ = conn.Close()
+			return nil, tlsErr(ctx, err)
+		}
+		cfg = c
+	} else {
+		cfg = &tls.Config{ServerName: t.host, MinVersion: tls.VersionTLS12}
+	}
+	tc := tls.Client(conn, cfg)
+	if err := tc.HandshakeContext(ctx); err != nil {
+		_ = conn.Close()
+		if b != nil {
+			if noted := b.NoteVerificationFailure(err); noted != nil {
+				err = noted
+			}
+		}
+		return nil, tlsErr(ctx, err)
+	}
+	return tc, nil
+}
+
+// tlsErr reduces a TLS or trust failure to a fixed, audit-safe error.
+func tlsErr(ctx context.Context, err error) error {
+	if errors.Is(err, tlstrust.ErrPinMismatch) && errors.Is(err, tlstrust.ErrAudit) {
+		return errors.Join(tlstrust.ErrPinMismatch, tlstrust.ErrAudit)
+	}
+	switch {
+	case errors.Is(err, tlstrust.ErrUnapproved):
+		return tlstrust.ErrUnapproved
+	case errors.Is(err, tlstrust.ErrPinMismatch):
+		return tlstrust.ErrPinMismatch
+	case errors.Is(err, tlstrust.ErrAudit):
+		return tlstrust.ErrAudit
+	case errors.Is(err, tlstrust.ErrInvalid):
+		return tlstrust.ErrInvalid
+	case errors.Is(err, tlstrust.ErrStore):
+		return tlstrust.ErrStore
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	var cv *tls.CertificateVerificationError
+	if errors.As(err, &cv) {
+		return ErrCertificate
+	}
+	return ErrConnect
 }
 
 // streamErr reduces a dial failure to a sentinel or context error so no

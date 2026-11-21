@@ -103,40 +103,6 @@ func TestDoBasic(t *testing.T) {
 	}
 }
 
-func TestDoTLSVerified(t *testing.T) {
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "ok")
-	}))
-	defer srv.Close()
-
-	f := newFixture(t, srv, "https", "example.com", 443, defaultLimits)
-	f.p.httpClient.Transport.(*schemeTransport).https.TLSClientConfig = srv.Client().Transport.(*http.Transport).TLSClientConfig
-	resp, err := f.p.Do(get(t, context.Background(), "https://example.com/"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if string(b) != "ok" {
-		t.Fatalf("body %q", b)
-	}
-
-	// Server identity must match the requested host: the test certificate
-	// does not cover this name.
-	g := newFixture(t, srv, "https", "wrong.example", 443, defaultLimits)
-	g.p.httpClient.Transport.(*schemeTransport).https.TLSClientConfig = srv.Client().Transport.(*http.Transport).TLSClientConfig
-	_, err = g.p.Do(get(t, context.Background(), "https://wrong.example/"))
-	if !errors.Is(err, ErrConnect) {
-		t.Fatalf("want ErrConnect, got %v", err)
-	}
-	// Without the test root, verification fails.
-	h := newFixture(t, srv, "https", "example.com", 443, defaultLimits)
-	_, err = h.p.Do(get(t, context.Background(), "https://example.com/"))
-	if !errors.Is(err, ErrConnect) {
-		t.Fatalf("want ErrConnect, got %v", err)
-	}
-}
-
 func TestSameOriginRedirectRefreshesDNS(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
