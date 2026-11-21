@@ -15,6 +15,7 @@ Workflow file: `.github/workflows/security.yml`. Stable job (check) names:
 | `security-go` | `bash scripts/security.sh go` | PR, push to `main` | `govulncheck`, `gosec`, `staticcheck` on the patched Go toolchain |
 | `security-policy` | Semgrep (pinned Docker image) with `.semgrep.yml` | PR, push to `main` | Repository policy rules over the tree and the annotated fixtures |
 | `fuzz-smoke` | `bash scripts/security.sh fuzz-smoke` | PR, push to `main` | Short, bounded fuzz run of existing fuzz targets |
+| `security-foundation` | `go test -tags securityfoundation -race -count=1 -timeout 8m -v -run '^TestSecurityFoundation' ./internal/hub/rpc ./internal/egress` | PR, push to `main` | Fixture-only S09 (#21) race tests (`TestSecurityFoundation`, `TestSecurityFoundationFailClosed`, `TestSecurityFoundationProvider`, `TestSecurityFoundationRebinding`), test source only, review required; no credentials, live provider, or tailnet; the ordinary suite does not depend on the tag; hosted result pending; see [security-foundation.md](security-foundation.md) |
 | `fuzz-long` | `bash scripts/security.sh fuzz-long` | Schedule and manual dispatch only | Longer fuzzing; never runs on PRs and is not a required check |
 | `dependency-config` | Renovate config validator | PR, push to `main` | Validates the Renovate configuration |
 
@@ -31,8 +32,8 @@ bash scripts/security.sh fuzz-long   # long; normally scheduled/manual only
 
 ### Trigger budgets
 
-- `security-go`, `security-policy`, `fuzz-smoke` and `dependency-config` are the only security jobs on pull requests; `fuzz-smoke` is time-bounded so PR latency stays small.
-- `security-go`, `security-policy`, `fuzz-smoke` and `dependency-config` run only on `pull_request` and `push` to `main`; they do not run on `schedule` or `workflow_dispatch`.
+- `security-go`, `security-policy`, `fuzz-smoke`, `security-foundation` and `dependency-config` are the only security jobs on pull requests; `fuzz-smoke` and `security-foundation` are time-bounded so PR latency stays small.
+- `security-go`, `security-policy`, `fuzz-smoke`, `security-foundation` and `dependency-config` run only on `pull_request` and `push` to `main`; they do not run on `schedule` or `workflow_dispatch`.
 - `fuzz-long` runs only on `schedule` and on `workflow_dispatch` from `main` (it checks out `main` with `persist-credentials: false`), so unbounded fuzzing cannot block a PR.
 - All jobs run on `ubuntu-24.04`, consistent with the baseline `CI` workflow.
 - Fuzz targets (five, exact): `./cmd/hx FuzzParseCheckpoint`, `./internal/hub/audit FuzzVerifyAnchoredFrame`, `./internal/sanitize FuzzLogProperties`, `./internal/sanitize FuzzLabelProperties`, `./internal/secret FuzzRedactionIndependence`. `fuzz-smoke` runs each for `-fuzztime 100x`; `fuzz-long` runs each for `-fuzztime 60s`.

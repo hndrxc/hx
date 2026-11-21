@@ -157,6 +157,7 @@ To activate branch protection and enforce CI checks and Code Owner approvals, a 
        - `security-go`
        - `security-policy`
        - `fuzz-smoke`
+       - `security-foundation` (required before enabling any live collector; see [S09](security/security-foundation.md))
        - `dependency-config`
      - Do not require `fuzz-long`; it only runs on `main` by schedule or manual dispatch.
    - **Bypass List:** Leave the ruleset bypass list empty (no roles, teams, or apps granted bypass permissions), ensuring rules apply uniformly.

@@ -69,13 +69,19 @@ For detailed specifications on each check and CI environment variables, see [doc
 
 ### Security gates
 
-Security checks (`security-go`, `security-policy`, `fuzz-smoke`, `dependency-config`; `fuzz-long` runs only on schedule or manual dispatch) are driven by `scripts/security.sh` (`install`, `go`, `fuzz-smoke`, `fuzz-long`):
+Security checks (`security-go`, `security-policy`, `fuzz-smoke`, `security-foundation`, `dependency-config`; `fuzz-long` runs only on schedule or manual dispatch) are driven by `scripts/security.sh` (`install`, `go`, `fuzz-smoke`, `fuzz-long`), except `security-foundation`, which runs the fixture-only S09 race tests directly:
 
 ```bash
 bash scripts/security.sh install
 bash scripts/security.sh go
 bash scripts/security.sh fuzz-smoke
 ```
+
+```bash
+CGO_ENABLED=1 go test -tags securityfoundation -race -count=1 -timeout 8m -v -run '^TestSecurityFoundation' ./internal/hub/rpc ./internal/egress
+```
+
+These tests use synthetic inputs only; never add real tokens, certificates, provider hosts, or tailnet nodes, and keep failure output to safe categories (no payloads, key or certificate bytes, or IP addresses). No live collector is enabled before #21 is reviewed and this gate is green; see [docs/security/security-foundation.md](docs/security/security-foundation.md).
 
 Semgrep inline suppressions (`nosemgrep`) are disabled and broad exclusions are not accepted; fix the finding or propose a narrowly scoped, security-reviewed rule change. The only gosec exception is F04-001 (`G304` in `cmd/hx/audit.go`, expires 2027-02-20). Tool pins, the patched Go 1.27.4 scan toolchain and fixture/probe commands are in [docs/security/ci-gates.md](docs/security/ci-gates.md); pin updates follow the [dependency update policy](docs/security/dependency-updates.md).
 
