@@ -15,7 +15,7 @@ The repository CI workflow is defined in `.github/workflows/ci.yml` under the wo
 1. **Independent Execution:** The workflow defines four separate jobs: `formatting`, `build`, `test`, and `generated`. Jobs declare no inter-job dependencies (`needs:`), allowing them to run concurrently and isolate failures to specific quality dimensions.
 2. **Stable Check Names:** Check run names match their job IDs exactly (`formatting`, `build`, `test`, `generated`). These names provide permanent anchors for branch protection and ruleset enforcement.
 3. **Trigger Behavior & Limitations:** Triggers are configured for `pull_request` (running by default on `opened`, `synchronize`, and `reopened` activity types) across all branches, and for `push` to `main`. No path filters (`paths:` or `paths-ignore:`) are used. Note that GitHub Actions requires first-time outside contributor fork PRs to be manually approved by a repository maintainer before workflows execute, and PR merge conflict states can prevent pull request merge ref evaluation.
-4. **Toolchain Version Alignment:** Go versioning in CI is driven from `go.mod` (`go 1.27.3`) via `actions/setup-go` (`go-version-file: 'go.mod'`), ensuring CI chooses the declared Go version. Local development environments may have a newer patch or minor release of Go installed, so `go-version-file` ensures CI adheres to the declared floor/version rather than guaranteeing identical toolchains across all local machines.
+4. **Toolchain Version Alignment:** Go versioning in CI is driven from the `go.mod` Go directive (currently `go 1.27.4`) via `actions/setup-go` (`go-version-file: 'go.mod'`), ensuring CI chooses the declared Go version. Local development environments may have a newer patch or minor release of Go installed, so `go-version-file` ensures CI adheres to the declared floor/version rather than guaranteeing identical toolchains across all local machines.
 5. **Runner Environment:** All jobs run on standard GitHub-hosted `ubuntu-24.04` Linux runners.
 
 ---
@@ -212,7 +212,7 @@ The isolated, never-merged [sample PR #87](https://github.com/hndrxc/hx/pull/87)
 
 After removing every probe at `40f1a6f`, all four checks passed in [recovery run 42450808183](https://github.com/hndrxc/hx/actions/runs/42450808183). No probe or generator is included in the implementation branch.
 
-Local verification on Linux amd64, Go 1.27.3:
+Local verification on Linux amd64, Go 1.27.3 (historical F03 evidence; the declared directive has since moved to `go 1.27.4`):
 
 - `bash scripts/check.sh all`: passed, including all seven cross-build targets and the full headless test suite.
 - `CGO_ENABLED=0 go vet ./...`, `bash -n scripts/check.sh`, and `actionlint .github/workflows/ci.yml` (v1.7.12): passed.

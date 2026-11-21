@@ -1,0 +1,93 @@
+name: Transport
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ipc-windows:
+    # The Windows hub is unsupported; this job only exercises the named-pipe IPC adapter.
+    name: ipc-windows
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Test IPC package
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: go test ./internal/hub/ipc
+
+  ipc-linux-cross-user:
+    # Runs the cross-UID peer test as root only inside an isolated,
+    # network-less scratch container holding just the static test binary.
+    name: ipc-linux-cross-user
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run cross-UID peer and offline tailnet tests in scratch container
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          temp="$(mktemp -d)"
+          tag="hx-ipc-test:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker image rm -f "$tag" >/dev/null 2>&1 || true
+            rm -rf "$temp"
+          }
+          trap cleanup EXIT
+          go test -c -o "$temp/ipc.test" ./internal/hub/ipc
+          go test -c -o "$temp/rpc.test" ./internal/hub/rpc
+          printf 'FROM scratch\nCOPY ipc.test /test-ipc\nCOPY rpc.test /test-rpc\n' > "$temp/Dockerfile"
+          docker build --network none --pull=false -t "$tag" "$temp"
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --cap-add SETUID \
+            --cap-add SETGID \
+            --cap-add CHOWN \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,nosuid,nodev,exec,mode=1777 \
+            --pids-limit 256 \
+            --user 0:0 \
+            "$tag" \
+            /test-ipc -test.run '^TestCrossUIDPeer$' -test.v -test.timeout 30s
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,nosuid,nodev,exec,mode=1777 \
+            --pids-limit 256 \
+            -e HX_TEST_OFFLINE_TAILNET=1 \
+            "$tag" \
+            /test-rpc -test.run '^TestOfflineTailnetListenerExposure$' -test.v -test.timeout 30s

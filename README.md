@@ -10,15 +10,15 @@ Secure, read-only-first infrastructure monitoring system for hybrid cloud and ho
 
 ### Implemented vs. Planned
 
-| Area | Current State (Bootstrap / F02) | Planned Implementation |
+| Area | Current State | Planned Implementation |
 | :--- | :--- | :--- |
-| **Toolchain & Module** | Go 1.27.3 module bootstrap (`go.mod`, `go.sum`). Locked runtime dependency on `github.com/spf13/cobra v1.10.2`. Zero CGO requirement (`CGO_ENABLED=0`). | Minimal, auditable dependency tree. Pinned dependencies for TUI, RPC, SQLite, and WireGuard added only when owning issues land. |
+| **Toolchain & Module** | Go 1.27.4 minimum; pinned Go modules and CGO-free headless builds. | TUI, database, and desktop dependencies land with their owning issues. |
 | **Command Entry Points** | Three headless executable targets under `cmd/`: `cmd/hx`, `cmd/hx-agent`, `cmd/hx-desktop`. | Full subsystem commands and background daemons. |
 | **CLI & Help** | `hx` root displays help and exits `0`. Root `--version` flag and `version` subcommand report version information from `internal/buildinfo`. Unknown commands/flags exit non-zero. Auto-completion commands are disabled. | Operational client commands, configuration inspection, and profile management ([C01 / #31](https://github.com/hndrxc/hx/issues/31)). |
 | **Subsystem Runtimes** | `hx hub`, `hx tui`, bare `hx-agent`, and bare `hx-desktop` exit `1` with descriptive `not implemented` messages on stderr. No background services, network listeners, file watchers, or IPC channels start. | Hub background service ([H01 / #27](https://github.com/hndrxc/hx/issues/27)), Bubble Tea TUI ([C02 / #34](https://github.com/hndrxc/hx/issues/34)), telemetry agent daemon ([A02 / #62](https://github.com/hndrxc/hx/issues/62)), and Wails desktop application ([C03 / #60](https://github.com/hndrxc/hx/issues/60)). |
 | **Architecture Boundaries** | Package layout and internal import allow/deny rules enforced via unit tests (`internal/architecture`). Agent and desktop targets cannot import hub or provider packages. | Strict internal trust boundaries documented in [ADR-0011](docs/adr/0011-package-layout-and-dependency-direction.md). |
 | **Vault & Security** | No vault, encryption, or secret handling code is executed in bootstrap. Vault starts locked by design when built. | Encrypted vault storage ([S02 / #14](https://github.com/hndrxc/hx/issues/14)), redacted secrets ([S01 / #12](https://github.com/hndrxc/hx/issues/12)), verifiable audit log ([S03 / #13](https://github.com/hndrxc/hx/issues/13)), and security gates ([F04 / #20](https://github.com/hndrxc/hx/issues/20)). |
-| **Network & Transport** | No listening ports, network sockets, or external connections are established. | Embedded Tailscale mesh (`tsnet`) for hub ([ADR-0007](docs/adr/0007-tailnet-transport-and-bootstrap-egress.md)), outbound-only agents ([ADR-0008](docs/adr/0008-outbound-only-device-agents.md)), and strict egress allowlisting ([S04 / #15](https://github.com/hndrxc/hx/issues/15)). |
+| **Network & Transport** | [Tailnet RPC and local IPC scaffolding](docs/security/hub-transport.md). The bootstrap command starts no listeners. | Daemon composition and outbound-only device agents ([ADR-0008](docs/adr/0008-outbound-only-device-agents.md)). |
 | **GUI & Display** | `cmd/hx-desktop` builds as a headless, CGO-free stub binary without webview or display dependencies. | Webview-based desktop client isolated behind the `desktop` build tag ([ADR-0005](docs/adr/0005-supported-platforms-and-build-targets.md), [C03 / #60](https://github.com/hndrxc/hx/issues/60)). |
 
 ---
@@ -29,7 +29,7 @@ The current repository builds with standard Go toolchain tools without credentia
 
 ### Prerequisites
 
-- Go `1.27.3` minimum (`go version` $\ge$ `go1.27.3`).
+- Go `1.27.4` minimum.
 - Git.
 - C compiler is **not** required (`CGO_ENABLED=0`).
 

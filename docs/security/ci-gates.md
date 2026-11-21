@@ -70,11 +70,11 @@ Primary upstream references:
 
 The security workflow scans with Go `1.27.4`, which carries standard-library security fixes. The standard library is part of what `govulncheck` reports on, and the baseline advisory report in PR [#90](https://github.com/hndrxc/hx/pull/90) found standard-library findings fixed in the newer patch release. The scan therefore uses the patched toolchain so that findings reflect the repository's own code and dependencies rather than a known-stale toolchain.
 
-This is deliberately separate from the application's declared minimum: the application `go.mod` is **not** modified by this work and continues to declare its own minimum (`go 1.27.3`) used by the baseline `CI` workflow. Consequences:
+The application `go.mod` now declares `go 1.27.4`, so the module minimum matches the patched scan toolchain. Consequences:
 
 - The patched workflow toolchain (`1.27.4`) is what the security gates analyze.
-- The `go.mod` minimum describes the oldest toolchain the module supports; it does not claim that binaries built with it are free of the standard-library issues fixed in `1.27.4`.
-- Raising the `go.mod` minimum is a separate, security-reviewed decision under the [dependency update policy](dependency-updates.md).
+- The `go.mod` minimum describes the oldest toolchain the module supports; raising it to `1.27.4` means builds no longer accept the toolchain with the standard-library issues fixed in that release. It is not a claim that the module is free of other issues.
+- Raising the `go.mod` minimum again is a separate, security-reviewed decision under the [dependency update policy](dependency-updates.md).
 
 ---
 
@@ -123,7 +123,7 @@ staticcheck ./security/testdata/scanners
 gosec ./security/testdata/scanners
 ```
 
-On this baseline, `GOTOOLCHAIN=go1.27.3 govulncheck ./...` provides a harmless negative check: it reports `GO-2026-6859` and exits 3. The workflow uses the patched toolchain and the live advisory database. Results depend on the source tree and current advisories.
+Because `go.mod` now requires `go 1.27.4`, the earlier `GOTOOLCHAIN=go1.27.3 govulncheck ./...` negative check no longer applies: the older toolchain refuses to load the module. The workflow uses the patched toolchain and the live advisory database. Results depend on the source tree and current advisories.
 
 ---
 
