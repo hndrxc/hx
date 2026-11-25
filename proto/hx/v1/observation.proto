@@ -1,0 +1,47 @@
+// Observation model for the hx.v1 monitoring API.
+syntax = "proto3";
+
+package hx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "hx/v1/resource.proto";
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// Unit of an observation value.
+enum Unit {
+  UNIT_UNSPECIFIED = 0;
+  UNIT_COUNT = 1;
+  UNIT_BYTES = 2;
+  UNIT_SECONDS = 3;
+  UNIT_RATIO = 4;
+  UNIT_CELSIUS = 5;
+  UNIT_HERTZ = 6;
+}
+
+// Observation is one metric sample for a resource.
+message Observation {
+  // Stable ID of the resource this observation belongs to.
+  string resource_id = 1;
+
+  // Stable metric name in lower_snake_case.
+  string name = 2;
+
+  // Availability of this observation. Every row carries observed_at (the
+  // time the outcome was itself observed). When AVAILABLE the row must also
+  // carry a defined unit and a numeric value; nonavailable rows carry
+  // neither a unit nor a numeric value.
+  DataStatus state = 3;
+
+  Unit unit = 4;
+
+  // Numeric sample; finite doubles only, int64 for exact counts.
+  oneof value {
+    int64 int_value = 5;
+    double double_value = 6;
+  }
+
+  // When this observation was taken (UTC). Always present: every row is
+  // keyed by the (observed_at, resource_id, name) tuple.
+  google.protobuf.Timestamp observed_at = 7;
+}

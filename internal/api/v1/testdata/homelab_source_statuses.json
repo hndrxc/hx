@@ -1,0 +1,21 @@
+{
+  "statuses": [
+    {
+      "source": { "integrationId": "cloud-alpha", "scope": "prod/us-east-1" },
+      "outcome": "OUTCOME_COMPLETE",
+      "lastAttemptAt": "2026-11-25T09:31:00Z",
+      "lastSuccessAt": "2026-11-25T09:31:00Z"
+    },
+    {
+      "source": { "integrationId": "homelab-node2", "scope": "main" },
+      "outcome": "OUTCOME_PARTIAL",
+      "lastAttemptAt": "2026-11-25T09:33:00Z",
+      "lastSuccessAt": "2026-11-25T09:30:00Z"
+    },
+    {
+      "source": { "integrationId": "lost-pool", "scope": "archive" },
+      "outcome": "OUTCOME_PERMISSION_DENIED",
+      "lastAttemptAt": "2026-11-25T09:02:00Z"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "relationships": [
+    {
+      "fromResourceId": "r1_0d405645b25ab0293b7377aa4c113595308d33c45f2e53c1b8fcdbff70f00783",
+      "toResourceId": "r1_bbdc0dc29e1bea63298f45e3fd3e9eef69f9c4f05d3d8145699b2abc606c0c2c",
+      "kind": "RELATIONSHIP_KIND_HOSTS",
+      "evidence": [
+        {
+          "source": { "integrationId": "homelab-node2", "scope": "main" },
+          "reference": "topology/pool-bulk/owner",
+          "observedAt": "2026-11-25T09:15:00Z"
+        }
+      ]
+    }
+  ]
+}

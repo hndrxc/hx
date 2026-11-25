@@ -1,0 +1,25 @@
+// Pagination primitives for hx.v1 list RPCs.
+syntax = "proto3";
+
+package hx.v1;
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// PageRequest controls one page of a list RPC.
+message PageRequest {
+  // Maximum number of items to return. 0 selects the default (50); valid
+  // explicit sizes are 1–200. Other sizes return INVALID_ARGUMENT. The server
+  // can return fewer items to stay within its message-size limit.
+  int32 page_size = 1;
+
+  // Opaque continuation token from the previous response. Empty requests the
+  // first page. Invalid, expired, or query-mismatched tokens return
+  // INVALID_ARGUMENT.
+  string page_token = 2;
+}
+
+// PageResponse carries the result of one page of a list RPC.
+message PageResponse {
+  // Continuation token for the next page. Empty when this page is the last.
+  string next_page_token = 1;
+}

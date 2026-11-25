@@ -1,0 +1,171 @@
+// MonitoringService exposes read-only views over normalized hx resources,
+// observations, events, relationships, and source statuses.
+//
+// The service is unary and read-only. Requests never carry credentials or
+// other authorization material (authorization is transport-level). Empty or
+// unset filter fields do not restrict results. List RPCs return stable,
+// well-defined orders (documented on each response) and page results via
+// PageRequest/PageResponse.
+syntax = "proto3";
+
+package hx.v1;
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+import "hx/v1/common.proto";
+import "hx/v1/pagination.proto";
+import "hx/v1/resource.proto";
+import "hx/v1/observation.proto";
+import "hx/v1/event.proto";
+import "hx/v1/relationship.proto";
+import "hx/v1/source_status.proto";
+
+service MonitoringService {
+  // Fetch one resource by stable ID.
+  rpc GetResource(GetResourceRequest) returns (GetResourceResponse);
+
+  // List resources matching the filters.
+  rpc ListResources(ListResourcesRequest) returns (ListResourcesResponse);
+
+  // List metric observations (history) for resources.
+  rpc ListObservations(ListObservationsRequest) returns (ListObservationsResponse);
+
+  // List events matching the filters.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+
+  // List directed relationships matching the filters.
+  rpc ListRelationships(ListRelationshipsRequest) returns (ListRelationshipsResponse);
+
+  // List source reconciliation statuses.
+  rpc ListSourceStatuses(ListSourceStatusesRequest) returns (ListSourceStatusesResponse);
+}
+
+// GetResourceRequest fetches one resource record.
+message GetResourceRequest {
+  // Stable resource ID.
+  string id = 1;
+
+  // Opt in to returning a terminal tombstoned record. Default (false)
+  // hides tombstoned records, matching ListResources.
+  bool include_tombstoned = 2;
+}
+
+// GetResourceResponse is the result of a point lookup.
+message GetResourceResponse {
+  // The requested resource. The server responds NOT_FOUND when no record
+  // exists for the ID (including when the only record is tombstoned and
+  // include_tombstoned is false).
+  Resource resource = 1;
+}
+
+// ListResourcesRequest lists resource records.
+message ListResourcesRequest {
+  PageRequest page = 1;
+
+  // Restrict to one kind; KIND_UNSPECIFIED does not restrict.
+  Kind kind = 2;
+
+  // Restrict to a source. A non-empty scope requires integration_id.
+  Source source = 3;
+
+  // Include terminal tombstoned records. Default (false) excludes them.
+  bool include_tombstoned = 4;
+}
+
+// ListResourcesResponse is a page of resource records.
+message ListResourcesResponse {
+  // Ordered by resource ID ascending.
+  repeated Resource resources = 1;
+
+  PageResponse page = 2;
+}
+
+// ListObservationsRequest lists observation history.
+message ListObservationsRequest {
+  PageRequest page = 1;
+
+  // Restrict to one resource; empty does not restrict.
+  string resource_id = 2;
+
+  // Restrict to one metric name (lower_snake_case); empty does not restrict.
+  string name = 3;
+
+  // Restrict to a time range; unset does not restrict.
+  TimeRange time = 4;
+}
+
+// ListObservationsResponse is a page of observations.
+message ListObservationsResponse {
+  // Ordered by observed_at descending, then resource_id ascending, then
+  // name ascending. At most one observation exists per (observed_at,
+  // resource_id, name) tuple.
+  repeated Observation observations = 1;
+
+  PageResponse page = 2;
+}
+
+// ListEventsRequest lists events.
+message ListEventsRequest {
+  PageRequest page = 1;
+
+  // Restrict to one resource; empty does not restrict.
+  string resource_id = 2;
+
+  // Restrict to a source; unset does not restrict.
+  Source source = 3;
+
+  // Restrict to one event kind (lower_snake_case); empty does not restrict.
+  string kind = 4;
+
+  // Restrict to a time range; unset does not restrict.
+  TimeRange time = 5;
+}
+
+// ListEventsResponse is a page of events.
+message ListEventsResponse {
+  // Ordered by occurred_at descending, then source.integration_id
+  // ascending, then source.scope ascending, then id ascending. Event IDs
+  // are unique within a source.
+  repeated Event events = 1;
+
+  PageResponse page = 2;
+}
+
+// ListRelationshipsRequest lists relationships.
+message ListRelationshipsRequest {
+  PageRequest page = 1;
+
+  // Restrict to edges leaving this resource; empty does not restrict.
+  string from_resource_id = 2;
+
+  // Restrict to edges entering this resource; empty does not restrict.
+  string to_resource_id = 3;
+
+  // Restrict to one relationship kind; RELATIONSHIP_KIND_UNSPECIFIED does
+  // not restrict.
+  RelationshipKind kind = 4;
+}
+
+// ListRelationshipsResponse is a page of relationships.
+message ListRelationshipsResponse {
+  // Ordered by from_resource_id ascending, then kind ascending, then
+  // to_resource_id ascending.
+  repeated Relationship relationships = 1;
+
+  PageResponse page = 2;
+}
+
+// ListSourceStatusesRequest lists source reconciliation statuses.
+message ListSourceStatusesRequest {
+  PageRequest page = 1;
+
+  // Restrict to one source; unset does not restrict.
+  Source source = 2;
+}
+
+// ListSourceStatusesResponse is a page of source statuses.
+message ListSourceStatusesResponse {
+  // Ordered by source.integration_id ascending, then source.scope ascending.
+  repeated SourceStatus statuses = 1;
+
+  PageResponse page = 2;
+}

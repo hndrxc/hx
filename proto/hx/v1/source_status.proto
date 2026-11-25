@@ -1,0 +1,38 @@
+// Source status model for the hx.v1 monitoring API.
+syntax = "proto3";
+
+package hx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "hx/v1/common.proto";
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// Outcome of the most recent reconciliation attempt for a source.
+enum Outcome {
+  OUTCOME_UNSPECIFIED = 0;
+  OUTCOME_COMPLETE = 1;
+  OUTCOME_PARTIAL = 2;
+  OUTCOME_UNAVAILABLE = 3;
+  OUTCOME_UNSUPPORTED = 4;
+  OUTCOME_PERMISSION_DENIED = 5;
+}
+
+// SourceStatus tracks reconciliation attempts per source. Only a newer
+// COMPLETE result for the exact source+scope may infer absence/tombstones
+// and authoritatively remove prior relationships; partial/failed attempts
+// update this status but retain unmentioned inventory and relationships.
+message SourceStatus {
+  Source source = 1;
+
+  Outcome outcome = 2;
+
+  // When the most recent attempt started (UTC), not when it finished.
+  google.protobuf.Timestamp last_attempt_at = 3;
+
+  // Timestamp of the most recent COMPLETE attempt, determined by ordering
+  // attempts by last_attempt_at. When the current record is COMPLETE, this
+  // equals its own last_attempt_at. Absent unless at least one COMPLETE
+  // attempt exists.
+  google.protobuf.Timestamp last_success_at = 4;
+}

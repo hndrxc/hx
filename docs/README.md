@@ -6,6 +6,7 @@
 - [Architecture Overview](architecture/overview.md) — System context, hub internals, remote read sequence, and vault lifecycle diagrams plus data flow rules.
 - [CI & Ruleset Configuration](ci.md) — Specification of continuous integration checks (formatting, build, test, generated), fork execution security, and repository protection ruleset setup.
 - [Contributing Guide](../CONTRIBUTING.md) — Contribution workflow, branch conventions, PR acceptance criteria, and local check commands.
+- [Normalized Monitoring Contract](adr/0013-normalized-monitoring-contract.md) — Resource identity, health, reconciliation, pagination, and Protobuf compatibility (D01).
 - [Security Policy](../SECURITY.md) — Security scope, vulnerability disclosure procedure, and credential handling rules.
 - [Project README](../README.md) — System overview, implemented vs. planned status, credential-free quickstart, and license.
 - [Threat Model](security/threat-model.md) — Trust zones, trust boundaries TB1–TB13, the root STRIDE register, residual risks, and the review checklist.
@@ -15,7 +16,7 @@
 - [Client and Device Enrollment](security/enrollment.md) — S07 (#18) operator approval, certificate renewal and revocation, tailnet role binding, and platform credential storage contracts.
 - [Hub Transport](security/hub-transport.md) — S08 (#19) authenticated tailnet RPC and local IPC adapters.
 - [Security Foundation Gate](security/security-foundation.md) — S09 (#21) credential-free integration and race verification required before live collectors.
-- [ADR Index & Process](adr/README.md) — The architecture decision record process, template, and index of ADRs 0001–0012.
+- [ADR Index & Process](adr/README.md) — The architecture decision record process, template, and index.
 - [ADR-0001: Record Architecture Decisions](adr/0001-record-architecture-decisions.md) — Adopts the ADR process as the record for F01 and all later security-relevant decisions.
 - [ADR-0002: Hub-Owned Credentials and Read-Only Integrations](adr/0002-hub-owned-credentials-and-read-only-integrations.md) — Provider credentials live only in the hub vault; integrations are read-only through Phase 3.
 - [ADR-0003: In-Process Collector Trust Boundary](adr/0003-in-process-collector-trust-boundary.md) — Built-in collectors share the hub process and make no isolation claim; untrusted collectors are never loaded in-process.

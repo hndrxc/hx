@@ -1,0 +1,35 @@
+{
+  "resources": [
+    {
+      "id": "r1_030d87e806b71fb4fdc89c8161d1fac35da6cf2e2b63ed9cd656b5f12c3a07d3",
+      "kind": "KIND_DEPLOYMENT",
+      "source": { "integrationId": "cloud-alpha", "scope": "prod/us-east-1" },
+      "displayName": "api-v42",
+      "state": {
+        "dataStatus": "DATA_STATUS_AVAILABLE",
+        "health": "HEALTH_HEALTHY",
+        "freshness": "FRESHNESS_FRESH",
+        "observedAt": "2026-11-25T09:30:00Z"
+      }
+    },
+    {
+      "id": "r1_8b22020c5a302ea06a1f528c2488d769f22668eb1de22a5a6f2120019c5ca1b5",
+      "kind": "KIND_SERVICE",
+      "source": { "integrationId": "cloud-alpha", "scope": "prod/us-east-1" },
+      "displayName": "legacy-adapter",
+      "tombstonedAt": "2026-11-25T10:00:00Z"
+    },
+    {
+      "id": "r1_b566c228563f2e3fdca0f897a7f6f860cb360fdb0c6353fc8908c7c929b7d1ec",
+      "kind": "KIND_DEPLOYMENT",
+      "source": { "integrationId": "cloud-alpha", "scope": "prod/us-east-1" },
+      "displayName": "web-v7",
+      "state": {
+        "dataStatus": "DATA_STATUS_UNAVAILABLE",
+        "health": "HEALTH_UNHEALTHY",
+        "freshness": "FRESHNESS_STALE",
+        "observedAt": "2026-11-25T09:29:00Z"
+      }
+    }
+  ]
+}

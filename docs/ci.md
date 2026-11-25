@@ -95,7 +95,7 @@ bash scripts/check.sh all
 - **Execution Sequence:**
   1. `go mod tidy -diff`: Verifies that `go.mod` and `go.sum` require no additions, removals, or formatting adjustments.
    2. `go mod verify`: Checks that cached dependency module ZIPs and extracted directories have not changed since download, using cached download hashes. Module downloads are authenticated against `go.sum` and, when applicable, the checksum database by Go module download operations; `go mod verify` is not a replacement for that authentication.
-  3. `go generate ./...`: Executes any code generators declared across repository packages.
+  3. `go generate ./...`: Lints `proto/` and regenerates Protobuf and Connect bindings under `internal/api/v1/` using the [pinned tools](compatibility.md).
   4. Working Tree Cleanliness Check:
      - `git diff --exit-code`: Verifies that no tracked files were modified or deleted by generation commands against the git index.
      - `git ls-files --others --exclude-standard`: Verifies that no new untracked files were emitted.
@@ -108,9 +108,9 @@ bash scripts/check.sh all
 
 To prevent silent build drift and hidden generator requirements:
 
-1. **Committed Output:** If code generation tooling (`go generate`) is introduced in future milestones, all generated files must be committed to source control.
+1. **Committed Output:** Check in generated Protobuf and Connect Go sources. Ordinary builds and tests do not need Buf or the generation plugins.
 2. **Drift Detection:** The `generated` CI check detects any drift between generators and committed files. If running `go generate ./...` produces uncommitted modifications or new untracked files, CI fails immediately.
-3. **No Dummy Generators:** In accordance with the F02/F03 minimal bootstrap contract, no fake, dummy, or placeholder generator scripts are added. Currently, `go generate ./...` executes cleanly as a no-op across all packages.
+3. **Pinned Local Tooling:** `go generate ./internal/api/v1` installs exact versions of Buf and both local plugins in a temporary directory; no remote plugin or separately installed compiler is required. A cold tool install can download modules from the configured Go module proxy.
 4. **Ignored Directories:** `.gitignore` restricts root-level exclusions to `/bin/` (for local manual binary builds) to avoid masking unexpected untracked files.
 
 ---

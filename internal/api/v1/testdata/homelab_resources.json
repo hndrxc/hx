@@ -1,0 +1,51 @@
+{
+  "page": { "nextPageToken": "opaque-page-token-2" },
+  "resources": [
+    {
+      "id": "r1_0d405645b25ab0293b7377aa4c113595308d33c45f2e53c1b8fcdbff70f00783",
+      "kind": "KIND_HOST",
+      "source": { "integrationId": "homelab-node2", "scope": "main" },
+      "displayName": "nas-0",
+      "state": {
+        "dataStatus": "DATA_STATUS_AVAILABLE",
+        "health": "HEALTH_HEALTHY",
+        "freshness": "FRESHNESS_FRESH",
+        "observedAt": "2026-11-25T09:15:00Z"
+      }
+    },
+    {
+      "id": "r1_7d3f37cf31f2c73f417fbdcff89c05e2dc5275b371b2f644be058a90b26e4701",
+      "kind": "KIND_BACKUP",
+      "source": { "integrationId": "lost-pool", "scope": "archive" },
+      "displayName": "wasabi-archive",
+      "state": {
+        "dataStatus": "DATA_STATUS_PERMISSION_DENIED",
+        "observedAt": "2026-11-25T09:00:00Z"
+      }
+    },
+    {
+      "id": "r1_bbdc0dc29e1bea63298f45e3fd3e9eef69f9c4f05d3d8145699b2abc606c0c2c",
+      "kind": "KIND_STORAGE_POOL",
+      "source": { "integrationId": "homelab-node2", "scope": "main" },
+      "displayName": "pool-bulk",
+      "state": {
+        "dataStatus": "DATA_STATUS_AVAILABLE",
+        "health": "HEALTH_HEALTHY",
+        "freshness": "FRESHNESS_FRESH",
+        "observedAt": "2026-11-25T09:30:00Z"
+      }
+    },
+    {
+      "id": "r1_f00f493892b9692a43fcdcc14019bd43c6ebda47f86356f1c861a6323c05f044",
+      "kind": "KIND_STORAGE_POOL",
+      "source": { "integrationId": "homelab-node2", "scope": "main" },
+      "displayName": "pool-cache",
+      "state": {
+        "dataStatus": "DATA_STATUS_AVAILABLE",
+        "health": "HEALTH_DEGRADED",
+        "freshness": "FRESHNESS_STALE",
+        "observedAt": "2026-11-25T09:00:00Z"
+      }
+    }
+  ]
+}
