@@ -1,0 +1,32 @@
+// Event model for the hx.v1 monitoring API.
+syntax = "proto3";
+
+package hx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "hx/v1/common.proto";
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// Event is one normalized state-change notification.
+message Event {
+  // Opaque idempotency key. Unique within a source.
+  string id = 1;
+
+  Source source = 2;
+
+  // Resource this event concerns; empty when not tied to one resource.
+  string resource_id = 3;
+
+  // Stable event kind in lower_snake_case.
+  string kind = 4;
+
+  // When the event occurred (UTC).
+  google.protobuf.Timestamp occurred_at = 5;
+
+  // Human-readable summary.
+  string summary = 6;
+
+  // Supporting provenance; zero or more items.
+  repeated Evidence evidence = 7;
+}

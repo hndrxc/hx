@@ -1,0 +1,46 @@
+// Common messages shared across the hx.v1 monitoring API.
+syntax = "proto3";
+
+package hx.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// Source identifies one immutable integration instance and one stable
+// reconciliation scope. It never carries hostnames, credentials, or any
+// other secret material.
+message Source {
+  // Opaque identifier of the integration instance (for example a cloud
+  // account identity or a homelab appliance pairing). Never a secret.
+  string integration_id = 1;
+
+  // Stable reconciliation scope inside the integration. When used as a
+  // filter, a non-empty scope requires integration_id to be set; an empty
+  // scope means "any scope within integration_id".
+  string scope = 2;
+}
+
+// TimeRange selects a half-open interval [from_time, until_time):
+// from_time is inclusive, until_time is exclusive. An unset bound leaves
+// that side open. All timestamps are UTC.
+message TimeRange {
+  // Inclusive lower bound.
+  google.protobuf.Timestamp from_time = 1;
+
+  // Exclusive upper bound.
+  google.protobuf.Timestamp until_time = 2;
+}
+
+// Evidence documents how a fact was observed: which source produced it and
+// an opaque, non-secret locator for the underlying provider record.
+message Evidence {
+  // Source that produced this evidence.
+  Source source = 1;
+
+  // Opaque locator of the underlying provider record. Never a secret.
+  string reference = 2;
+
+  // When the evidence was observed.
+  google.protobuf.Timestamp observed_at = 3;
+}

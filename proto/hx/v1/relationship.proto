@@ -1,0 +1,28 @@
+// Relationship model for the hx.v1 monitoring API.
+syntax = "proto3";
+
+package hx.v1;
+
+import "hx/v1/common.proto";
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// RelationshipKind classifies a directed edge between two resources.
+enum RelationshipKind {
+  RELATIONSHIP_KIND_UNSPECIFIED = 0;
+  RELATIONSHIP_KIND_HOSTS = 1;
+  RELATIONSHIP_KIND_DEPENDS_ON = 2;
+  RELATIONSHIP_KIND_BACKS_UP = 3;
+  RELATIONSHIP_KIND_MEMBER_OF = 4;
+}
+
+// Relationship is one directed edge from from_resource_id to
+// to_resource_id.
+message Relationship {
+  string from_resource_id = 1;
+  string to_resource_id = 2;
+  RelationshipKind kind = 3;
+
+  // Provenance; one or more items on a recorded relationship.
+  repeated Evidence evidence = 4;
+}

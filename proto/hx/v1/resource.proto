@@ -1,0 +1,83 @@
+// Resource model for the hx.v1 monitoring API.
+syntax = "proto3";
+
+package hx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "hx/v1/common.proto";
+
+option go_package = "github.com/hndrxc/hx/internal/api/v1;hxv1";
+
+// Kind classifies the provider-native resource a record describes.
+enum Kind {
+  KIND_UNSPECIFIED = 0;
+  KIND_SERVICE = 1;
+  KIND_PROJECT = 2;
+  KIND_DEPLOYMENT = 3;
+  KIND_DNS_RECORD = 4;
+  KIND_CERTIFICATE = 5;
+  KIND_HOST = 6;
+  KIND_VIRTUAL_MACHINE = 7;
+  KIND_STORAGE_POOL = 8;
+  KIND_DEVICE = 9;
+  KIND_BACKUP = 10;
+}
+
+// DataStatus reports the state of data collection for a resource or
+// observation, independent of its validated content.
+enum DataStatus {
+  DATA_STATUS_UNSPECIFIED = 0;
+  DATA_STATUS_AVAILABLE = 1;
+  DATA_STATUS_UNAVAILABLE = 2;
+  DATA_STATUS_UNSUPPORTED = 3;
+  DATA_STATUS_PERMISSION_DENIED = 4;
+}
+
+// Health is the last validated health value, kept separate from collection
+// status. It is never synthesized: the wire carries only what was observed.
+enum Health {
+  HEALTH_UNSPECIFIED = 0;
+  HEALTH_HEALTHY = 1;
+  HEALTH_DEGRADED = 2;
+  HEALTH_UNHEALTHY = 3;
+}
+
+// Freshness reports whether the observed data is current.
+enum Freshness {
+  FRESHNESS_UNSPECIFIED = 0;
+  FRESHNESS_FRESH = 1;
+  FRESHNESS_STALE = 2;
+}
+
+// State bundles the collection status and the last validated values of a
+// resource. Consumers should treat effective health as unknown unless data
+// is AVAILABLE and FRESH and observed_at is present; the wire carries only
+// the last validated health, not an invented unhealthy signal.
+message State {
+  DataStatus data_status = 1;
+  Health health = 2;
+  Freshness freshness = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+// Resource is one normalized resource record keyed by its stable ID.
+message Resource {
+  // Stable resource ID (see the shared ID contract; for example generated
+  // by domain.NewResourceID).
+  string id = 1;
+
+  Kind kind = 2;
+
+  Source source = 3;
+
+  // Human-readable display name chosen by the provider.
+  string display_name = 4;
+
+  // Active snapshot values. Absent on a tombstoned terminal record.
+  State state = 5;
+
+  // Present exactly when this record is a terminal tombstone replacing the
+  // active snapshot; absent while the resource is active. A later explicit
+  // sighting revives the same ID — the ID itself never changes.
+  google.protobuf.Timestamp tombstoned_at = 6;
+}

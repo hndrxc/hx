@@ -1,0 +1,34 @@
+{
+  "observations": [
+    {
+      "resourceId": "r1_bbdc0dc29e1bea63298f45e3fd3e9eef69f9c4f05d3d8145699b2abc606c0c2c",
+      "name": "utilization_ratio",
+      "state": "DATA_STATUS_AVAILABLE",
+      "unit": "UNIT_RATIO",
+      "doubleValue": 0.5,
+      "observedAt": "2026-11-25T09:35:00Z"
+    },
+    {
+      "resourceId": "r1_bbdc0dc29e1bea63298f45e3fd3e9eef69f9c4f05d3d8145699b2abc606c0c2c",
+      "name": "used_bytes",
+      "state": "DATA_STATUS_AVAILABLE",
+      "unit": "UNIT_BYTES",
+      "intValue": "137438953472",
+      "observedAt": "2026-11-25T09:30:00Z"
+    },
+    {
+      "resourceId": "r1_0d405645b25ab0293b7377aa4c113595308d33c45f2e53c1b8fcdbff70f00783",
+      "name": "failed_drives",
+      "state": "DATA_STATUS_AVAILABLE",
+      "unit": "UNIT_COUNT",
+      "intValue": "0",
+      "observedAt": "2026-11-25T09:15:00Z"
+    },
+    {
+      "resourceId": "r1_7d3f37cf31f2c73f417fbdcff89c05e2dc5275b371b2f644be058a90b26e4701",
+      "name": "sync_lag_seconds",
+      "state": "DATA_STATUS_PERMISSION_DENIED",
+      "observedAt": "2026-11-25T09:00:00Z"
+    }
+  ]
+}

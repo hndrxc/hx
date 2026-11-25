@@ -1,0 +1,19 @@
+{
+  "events": [
+    {
+      "id": "evt-pool-scrub-42",
+      "source": { "integrationId": "homelab-node2", "scope": "main" },
+      "resourceId": "r1_bbdc0dc29e1bea63298f45e3fd3e9eef69f9c4f05d3d8145699b2abc606c0c2c",
+      "kind": "scrub_completed",
+      "occurredAt": "2026-11-25T09:00:00Z",
+      "summary": "Storage pool scrub completed",
+      "evidence": [
+        {
+          "source": { "integrationId": "homelab-node2", "scope": "main" },
+          "reference": "record-42",
+          "observedAt": "2026-11-25T09:00:00Z"
+        }
+      ]
+    }
+  ]
+}
